@@ -37,30 +37,9 @@ public class EmailLogConfiguration
             .HasForeignKey(x => x.OrderId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne<Ticket>()
-            .WithMany()
-            .HasForeignKey(x => x.TicketId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne<Complaint>()
-            .WithMany()
-            .HasForeignKey(x => x.ComplaintId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne<AfterSalesRequest>()
-            .WithMany()
-            .HasForeignKey(x => x.AfterSalesRequestId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         builder.HasIndex(x => x.CustomerId);
 
         builder.HasIndex(x => x.OrderId);
-
-        builder.HasIndex(x => x.TicketId);
-
-        builder.HasIndex(x => x.ComplaintId);
-
-        builder.HasIndex(x => x.AfterSalesRequestId);
 
         builder.HasIndex(x => new
         {

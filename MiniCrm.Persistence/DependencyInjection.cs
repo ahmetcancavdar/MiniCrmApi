@@ -111,20 +111,8 @@ public static class DependencyInjection
             OrderRepository>();
 
         services.AddScoped<
-            ITicketRepository,
-            TicketRepository>();
-
-        services.AddScoped<
-            IComplaintRepository,
-            ComplaintRepository>();
-
-        services.AddScoped<
             ISupportConversationRepository,
             SupportConversationRepository>();
-
-        services.AddScoped<
-            IAfterSalesRequestRepository,
-            AfterSalesRequestRepository>();
 
         services.AddScoped<
             IEmailLogRepository,
@@ -138,6 +126,10 @@ public static class DependencyInjection
         services.AddScoped<
             IAuthService,
             AuthService>();
+
+        services.AddScoped<
+            IAdminDirectoryService,
+            AdminDirectoryService>();
 
         services.AddScoped<
             ICategoryService,
@@ -164,20 +156,8 @@ public static class DependencyInjection
             CustomerAddressService>();
 
         services.AddScoped<
-            ITicketService,
-            TicketService>();
-
-        services.AddScoped<
-            IComplaintService,
-            ComplaintService>();
-
-        services.AddScoped<
             ISupportConversationService,
             SupportConversationService>();
-
-        services.AddScoped<
-            IAfterSalesRequestService,
-            AfterSalesRequestService>();
 
         return services;
     }

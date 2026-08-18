@@ -20,6 +20,15 @@ public class SupportConversation : BaseEntity
 
 
     // ============================================================
+    // ORDER (OPTIONAL)
+    // ============================================================
+
+    public int? OrderId { get; private set; }
+
+    public Order? Order { get; private set; }
+
+
+    // ============================================================
     // STATUS
     // ============================================================
 
@@ -57,7 +66,8 @@ public class SupportConversation : BaseEntity
     // ============================================================
 
     public SupportConversation(
-        int customerId)
+        int customerId,
+        int? orderId = null)
     {
         if (customerId <= 0)
         {
@@ -65,8 +75,18 @@ public class SupportConversation : BaseEntity
                 "A valid customer is required.");
         }
 
+        if (orderId.HasValue &&
+            orderId.Value <= 0)
+        {
+            throw new DomainException(
+                "Invalid order.");
+        }
+
         CustomerId =
             customerId;
+
+        OrderId =
+            orderId;
 
         Status =
             SupportConversationStatus.Open;

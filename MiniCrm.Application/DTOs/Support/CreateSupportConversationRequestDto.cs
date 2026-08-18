@@ -8,4 +8,6 @@ public class CreateSupportConversationRequestDto
     [MaxLength(4000)]
     public string Message { get; set; } =
         string.Empty;
+
+    public int? OrderId { get; set; }
 }

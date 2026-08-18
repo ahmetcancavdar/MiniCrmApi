@@ -45,10 +45,7 @@ Sistem içerisinde:
 - sipariş oluşturma,
 - e-posta doğrulama,
 - sipariş durum yönetimi,
-- ticket sistemi,
-- şikâyet yönetimi,
-- müşteri-admin destek konuşmaları,
-- iade/değişim/garanti/teknik destek süreçleri
+- müşteri-admin destek sohbetleri (isteğe bağlı sipariş bağlantılı)
 
 birbiriyle ilişkili şekilde çalışmaktadır.
 
@@ -136,12 +133,8 @@ Sistemin temel iş nesnelerini ve business rule'larını içerir.
 - Order
 - OrderItem
 - OrderVerification
-- Ticket
-- TicketMessage
-- Complaint
 - SupportConversation
 - SupportMessage
-- AfterSalesRequest
 - EmailLog
 
 Domain katmanı ayrıca:
@@ -501,63 +494,9 @@ Uygun durumdaki sipariş iptal edildiğinde:
 
 ---
 
-# Destek ve Satış Sonrası Süreçler
+# Destek Sohbetleri
 
-## Ticket Sistemi
-
-Ticket'larda:
-
-- müşteri ticket açabilir,
-- admin cevap verebilir,
-- müşteri tekrar mesaj gönderebilir,
-- mesaj geçmişi DB'de tutulur.
-
-Status akışı:
-
-```text
-Open
- ↓
-InProgress
- ↓
-WaitingForCustomer
- ↓
-Resolved
- ↓
-Closed
-```
-
-Resolved ticket'a müşteri tekrar mesaj gönderirse uygun durumda yeniden işlem sürecine alınabilir.
-
-Closed ticket'a yeni mesaj gönderilemez.
-
----
-
-## Complaint Management
-
-Müşteri:
-
-- siparişe bağlı veya bağımsız complaint oluşturabilir,
-- kendi complaint kayıtlarını görüntüleyebilir.
-
-Admin akışı:
-
-```text
-Open
- ↓
-UnderReview
- ├──→ Resolved
- └──→ Rejected
-          ↓
-        Closed
-```
-
-Admin açıklamaları ve ilgili tarih alanları veritabanında saklanır.
-
----
-
-## Support Conversation
-
-Müşteri ile admin arasında DB tabanlı mesajlaşma sistemi bulunur.
+Müşteri ile admin arasındaki tüm iletişim (genel destek, şikayet, iade/değişim/garanti talepleri dahil) tek bir mesajlaşma kanalı üzerinden yürütülür. Ayrı ticket/complaint/after-sales modülleri yoktur; hepsi tek bir "destek sohbeti" (`SupportConversation`) kavramında birleştirilmiştir.
 
 ```text
 Customer
@@ -567,7 +506,12 @@ SupportConversation
 Admin
 ```
 
-Conversation:
+- Müşteri yeni bir destek sohbeti başlatır ve ilk mesajını yazar.
+- Müşteri ve admin aynı sohbet içinde karşılıklı mesajlaşmaya devam eder.
+- Müşteri, sohbeti oluştururken **isteğe bağlı olarak** (zorunlu değil) kendi siparişlerinden birine bağlayabilir — örneğin bir iade veya belirli bir siparişle ilgili destek talebi için. Sipariş bağlanmadan da genel bir destek sohbeti açılabilir.
+- Bir müşterinin aynı anda birden fazla açık sohbeti olabilir (örn. farklı siparişler için ayrı sohbetler).
+
+Conversation durumu:
 
 ```text
 Open
@@ -575,52 +519,7 @@ Open
 Closed
 ```
 
-durumlarına sahiptir.
-
-Closed conversation'a yeni mesaj gönderilemez.
-
-Aynı müşterinin aynı anda birden fazla açık conversation oluşturması service katmanında engellenir.
-
----
-
-## After-Sales Request
-
-Satış sonrası süreçler:
-
-```text
-Return
-Exchange
-Warranty
-TechnicalSupport
-```
-
-desteklenmektedir.
-
-Akış:
-
-```text
-Requested
-    ↓
-UnderReview
-   ↙      ↘
-Approved  Rejected
-   ↓
-Completed
-```
-
-Customer ayrıca yalnızca `Requested` aşamasında:
-
-```text
-Requested
-   ↓
-Cancelled
-```
-
-işlemi yapabilir.
-
-After-sales request yalnızca müşterinin kendisine ait ve `Delivered` durumundaki siparişlerde oluşturulabilir.
-
-Talep quantity değeri satın alınan miktardan fazla olamaz.
+Closed bir sohbete yeni mesaj gönderilemez; admin sohbeti kapatır.
 
 ---
 
@@ -630,10 +529,7 @@ SMTP üzerinden aşağıdaki süreçlerde e-posta gönderilebilir:
 
 - sipariş doğrulama kodu,
 - sipariş onayı,
-- sipariş durum değişiklikleri,
-- ticket güncellemeleri,
-- complaint güncellemeleri,
-- after-sales güncellemeleri.
+- sipariş durum değişiklikleri.
 
 E-posta işlemleri ayrıca `EmailLog` tablosunda tutulur.
 
@@ -1061,39 +957,7 @@ işlemlerini içerir.
 
 ---
 
-## Tickets
-
-Customer:
-
-```text
-/api/Tickets
-```
-
-Admin:
-
-```text
-/api/AdminTickets
-```
-
----
-
-## Complaints
-
-Customer:
-
-```text
-/api/Complaints
-```
-
-Admin:
-
-```text
-/api/AdminComplaints
-```
-
----
-
-## Support Conversations
+## Support Conversations (Destek Sohbetleri)
 
 Customer:
 
@@ -1107,30 +971,7 @@ Admin:
 /api/AdminSupportConversations
 ```
 
----
-
-## After-Sales
-
-Customer:
-
-```text
-/api/AfterSalesRequests
-```
-
-Admin:
-
-```text
-/api/AdminAfterSalesRequests
-```
-
-Desteklenen request türleri:
-
-```text
-Return
-Exchange
-Warranty
-TechnicalSupport
-```
+Müşteri-admin arası tüm destek, şikayet ve iade/değişim/garanti iletişimi bu tek kanal üzerinden yürütülür. Sohbet, isteğe bağlı olarak bir siparişe bağlanabilir.
 
 ---
 
@@ -1151,10 +992,7 @@ Kontrol edilen başlıca akışlar:
 - order lifecycle,
 - cancellation/restock,
 - profile/address ownership,
-- ticket workflow,
-- complaint workflow,
-- support conversation,
-- after-sales workflow,
+- destek sohbeti (support conversation) akışı,
 - 400/401/403/404/429 davranışları,
 - health check,
 - security headers,
@@ -1263,7 +1101,7 @@ Shipped
   ↓
 Delivered
   ↓
-After-Sales
+Destek Sohbeti (isteğe bağlı)
 ```
 
 ---
@@ -1281,10 +1119,7 @@ Proje kapsamında:
 - sepet,
 - sipariş,
 - e-posta doğrulama,
-- ticket,
-- complaint,
-- support conversation,
-- after-sales,
+- destek sohbeti (support conversation),
 - audit/logging,
 - soft delete,
 - merkezi exception handling,

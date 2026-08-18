@@ -16,6 +16,18 @@ public sealed class SupportConversationService
     private readonly ISupportConversationRepository
         _conversationRepository;
 
+    private readonly IOrderRepository
+        _orderRepository;
+
+    private readonly IEmailLogRepository
+        _emailLogRepository;
+
+    private readonly IEmailService
+        _emailService;
+
+    private readonly IAdminDirectoryService
+        _adminDirectoryService;
+
     private readonly IUnitOfWork
         _unitOfWork;
 
@@ -23,6 +35,10 @@ public sealed class SupportConversationService
     public SupportConversationService(
         ICustomerRepository customerRepository,
         ISupportConversationRepository conversationRepository,
+        IOrderRepository orderRepository,
+        IEmailLogRepository emailLogRepository,
+        IEmailService emailService,
+        IAdminDirectoryService adminDirectoryService,
         IUnitOfWork unitOfWork)
     {
         _customerRepository =
@@ -30,6 +46,18 @@ public sealed class SupportConversationService
 
         _conversationRepository =
             conversationRepository;
+
+        _orderRepository =
+            orderRepository;
+
+        _emailLogRepository =
+            emailLogRepository;
+
+        _emailService =
+            emailService;
+
+        _adminDirectoryService =
+            adminDirectoryService;
 
         _unitOfWork =
             unitOfWork;
@@ -51,26 +79,33 @@ public sealed class SupportConversationService
                 userId,
                 cancellationToken);
 
-        var existingConversations =
-            await _conversationRepository
-                .GetByCustomerIdAsync(
-                    customer.Id,
-                    cancellationToken);
 
-        var hasOpenConversation =
-            existingConversations.Any(x =>
-                x.Status ==
-                SupportConversationStatus.Open);
+        // ========================================================
+        // OPTIONAL ORDER OWNERSHIP
+        // ========================================================
 
-        if (hasOpenConversation)
+        if (request.OrderId.HasValue)
         {
-            throw new InvalidOperationException(
-                "You already have an open support conversation.");
+            var order =
+                await _orderRepository
+                    .GetByIdAsync(
+                        request.OrderId.Value,
+                        cancellationToken)
+                ?? throw new KeyNotFoundException(
+                    "Order was not found.");
+
+            if (order.CustomerId !=
+                customer.Id)
+            {
+                throw new UnauthorizedAccessException(
+                    "You do not have access to this order.");
+            }
         }
 
         var conversation =
             new SupportConversation(
-                customer.Id);
+                customer.Id,
+                request.OrderId);
 
         conversation.AddCustomerMessage(
             userId,
@@ -90,6 +125,11 @@ public sealed class SupportConversationService
                     cancellationToken)
             ?? throw new InvalidOperationException(
                 "Support conversation could not be reloaded.");
+
+        await NotifyAdminsOfCustomerMessageAsync(
+            savedConversation,
+            request.Message,
+            cancellationToken);
 
         return MapDetail(
             savedConversation);
@@ -177,6 +217,11 @@ public sealed class SupportConversationService
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 
+        await NotifyAdminsOfCustomerMessageAsync(
+            conversation,
+            request.Message,
+            cancellationToken);
+
         return MapDetail(
             conversation);
     }
@@ -212,6 +257,12 @@ public sealed class SupportConversationService
 
                     Status =
                         conversation.Status.ToString(),
+
+                    OrderId =
+                        conversation.OrderId,
+
+                    OrderNumber =
+                        conversation.Order?.OrderNumber,
 
                     CreatedAtUtc =
                         conversation.CreatedAtUtc,
@@ -283,6 +334,11 @@ public sealed class SupportConversationService
             request.Message);
 
         await _unitOfWork.SaveChangesAsync(
+            cancellationToken);
+
+        await NotifyCustomerOfAdminMessageAsync(
+            conversation,
+            request.Message,
             cancellationToken);
 
         return MapDetail(
@@ -386,6 +442,127 @@ public sealed class SupportConversationService
 
 
     // ============================================================
+    // NOTIFY ADMINS
+    // ============================================================
+
+    private async Task NotifyAdminsOfCustomerMessageAsync(
+        SupportConversation conversation,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        var adminEmails =
+            await _adminDirectoryService.GetAdminEmailsAsync(
+                cancellationToken);
+
+        var subject =
+            $"MiniCrm Support - New Message in Conversation #{conversation.Id}";
+
+        var body =
+            $"""
+            Hello,
+
+            {conversation.Customer.FullName} ({conversation.Customer.Email}) sent a new message in support conversation #{conversation.Id}.
+
+            Message:
+            {message}
+            """;
+
+        foreach (var adminEmail in adminEmails)
+        {
+            await SendSupportEmailAsync(
+                adminEmail,
+                conversation.CustomerId,
+                subject,
+                body,
+                cancellationToken);
+        }
+    }
+
+
+    // ============================================================
+    // NOTIFY CUSTOMER
+    // ============================================================
+
+    private async Task NotifyCustomerOfAdminMessageAsync(
+        SupportConversation conversation,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        var subject =
+            $"MiniCrm Support - New Reply in Conversation #{conversation.Id}";
+
+        var body =
+            $"""
+            Hello {conversation.Customer.FullName},
+
+            You have a new reply in support conversation #{conversation.Id}.
+
+            Message:
+            {message}
+            """;
+
+        await SendSupportEmailAsync(
+            conversation.Customer.Email,
+            conversation.CustomerId,
+            subject,
+            body,
+            cancellationToken);
+    }
+
+
+    // ============================================================
+    // EMAIL
+    // ============================================================
+
+    private async Task SendSupportEmailAsync(
+        string toEmail,
+        int customerId,
+        string subject,
+        string body,
+        CancellationToken cancellationToken)
+    {
+        var emailLog =
+            new EmailLog(
+                toEmail,
+                subject,
+                body,
+                EmailType.SupportMessage,
+                customerId);
+
+        await _emailLogRepository.AddAsync(
+            emailLog,
+            cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(
+            cancellationToken);
+
+        try
+        {
+            await _emailService.SendAsync(
+                toEmail,
+                subject,
+                body,
+                cancellationToken);
+
+            emailLog.MarkAsSent(
+                DateTime.UtcNow);
+
+            await _unitOfWork.SaveChangesAsync(
+                cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            emailLog.MarkAsFailed(
+                exception.Message,
+                DateTime.UtcNow);
+
+            await _unitOfWork.SaveChangesAsync(
+                cancellationToken);
+        }
+    }
+
+
+    // ============================================================
     // SUMMARY MAP
     // ============================================================
 
@@ -400,6 +577,12 @@ public sealed class SupportConversationService
 
             Status =
                 conversation.Status.ToString(),
+
+            OrderId =
+                conversation.OrderId,
+
+            OrderNumber =
+                conversation.Order?.OrderNumber,
 
             CreatedAtUtc =
                 conversation.CreatedAtUtc,
@@ -425,6 +608,12 @@ public sealed class SupportConversationService
 
             Status =
                 conversation.Status.ToString(),
+
+            OrderId =
+                conversation.OrderId,
+
+            OrderNumber =
+                conversation.Order?.OrderNumber,
 
             CreatedAtUtc =
                 conversation.CreatedAtUtc,

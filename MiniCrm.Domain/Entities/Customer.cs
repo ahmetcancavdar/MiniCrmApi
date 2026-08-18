@@ -20,13 +20,7 @@ public class Customer : BaseEntity
 
     public List<Order> Orders { get; set; } = new();
 
-    public List<Ticket> Tickets { get; set; } = new();
-
-    public List<Complaint> Complaints { get; set; } = new();
-
     public List<SupportConversation> SupportConversations { get; set; } = new();
-
-    public List<AfterSalesRequest> AfterSalesRequests { get; set; } = new();
 
     public List<EmailLog> EmailLogs { get; set; } = new();
 }

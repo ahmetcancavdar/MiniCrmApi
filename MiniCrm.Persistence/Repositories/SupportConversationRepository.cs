@@ -30,6 +30,7 @@ public sealed class SupportConversationRepository
     {
         return _context.SupportConversations
             .Include(x => x.Customer)
+            .Include(x => x.Order)
             .Include(x => x.Messages)
             .FirstOrDefaultAsync(
                 x => x.Id == conversationId,
@@ -48,6 +49,7 @@ public sealed class SupportConversationRepository
     {
         return _context.SupportConversations
             .AsNoTracking()
+            .Include(x => x.Order)
             .Where(x =>
                 x.CustomerId == customerId)
             .OrderByDescending(x =>
@@ -68,6 +70,7 @@ public sealed class SupportConversationRepository
         return _context.SupportConversations
             .AsNoTracking()
             .Include(x => x.Customer)
+            .Include(x => x.Order)
             .OrderByDescending(x =>
                 x.UpdatedAtUtc ?? x.CreatedAtUtc)
             .ToListAsync(

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "MiniCrm.Api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "MiniCrm.Api"],
+      "port": 5267
+    }
+  ]
+}

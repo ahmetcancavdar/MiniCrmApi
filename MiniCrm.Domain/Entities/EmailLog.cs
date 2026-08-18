@@ -25,12 +25,6 @@ public class EmailLog : BaseEntity
 
     public int? OrderId { get; private set; }
 
-    public int? TicketId { get; private set; }
-
-    public int? ComplaintId { get; private set; }
-
-    public int? AfterSalesRequestId { get; private set; }
-
     public DateTime? SentAtUtc { get; private set; }
 
     public DateTime? FailedAtUtc { get; private set; }
@@ -49,10 +43,7 @@ public class EmailLog : BaseEntity
         string body,
         EmailType emailType,
         int? customerId = null,
-        int? orderId = null,
-        int? ticketId = null,
-        int? complaintId = null,
-        int? afterSalesRequestId = null)
+        int? orderId = null)
     {
         if (string.IsNullOrWhiteSpace(
                 toEmail))
@@ -85,15 +76,6 @@ public class EmailLog : BaseEntity
 
         OrderId =
             orderId;
-
-        TicketId =
-            ticketId;
-
-        ComplaintId =
-            complaintId;
-
-        AfterSalesRequestId =
-            afterSalesRequestId;
 
         DeliveryStatus =
             EmailDeliveryStatus.Pending;

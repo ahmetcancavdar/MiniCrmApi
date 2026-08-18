@@ -50,23 +50,11 @@ public class AppDbContext
     public DbSet<OrderVerification> OrderVerifications =>
         Set<OrderVerification>();
 
-    public DbSet<Ticket> Tickets =>
-        Set<Ticket>();
-
-    public DbSet<TicketMessage> TicketMessages =>
-        Set<TicketMessage>();
-
-    public DbSet<Complaint> Complaints =>
-        Set<Complaint>();
-
     public DbSet<SupportConversation> SupportConversations =>
         Set<SupportConversation>();
 
     public DbSet<SupportMessage> SupportMessages =>
         Set<SupportMessage>();
-
-    public DbSet<AfterSalesRequest> AfterSalesRequests =>
-        Set<AfterSalesRequest>();
 
     public DbSet<EmailLog> EmailLogs =>
         Set<EmailLog>();

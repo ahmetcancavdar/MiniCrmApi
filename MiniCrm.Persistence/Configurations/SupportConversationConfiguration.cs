@@ -19,6 +19,11 @@ public class SupportConversationConfiguration
             .HasForeignKey(x => x.CustomerId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(x => x.Order)
+            .WithMany()
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasMany(x => x.Messages)
             .WithOne(x => x.SupportConversation)
             .HasForeignKey(x => x.SupportConversationId)
@@ -28,6 +33,8 @@ public class SupportConversationConfiguration
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.HasIndex(x => x.CustomerId);
+
+        builder.HasIndex(x => x.OrderId);
 
         builder.HasIndex(x => new
         {
