@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using MiniCrm.Application.Interfaces;
 using MiniCrm.Persistence.Context;
 
@@ -14,19 +13,15 @@ public class UnitOfWork : IUnitOfWork
         _context = context;
     }
 
-    public async Task<int> SaveChangesAsync(
+    // DbUpdateConcurrencyException burada yakalanmıyor; olduğu gibi
+    // fırlatılmasına izin verilir ki GlobalExceptionHandler'daki
+    // özel 409 (Conflict) eşlemesi devreye girsin. Daha önce burada
+    // InvalidOperationException'a çevriliyordu, bu da her zaman 400
+    // dönmesine ve 409 eşlemesinin hiç tetiklenmemesine yol açıyordu.
+    public Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await _context
-                .SaveChangesAsync(
-                    cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            throw new InvalidOperationException(
-                "The data was changed by another operation. Please try again.");
-        }
+        return _context.SaveChangesAsync(
+            cancellationToken);
     }
 }

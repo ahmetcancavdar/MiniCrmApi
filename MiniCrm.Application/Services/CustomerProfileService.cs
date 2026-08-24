@@ -77,6 +77,23 @@ public sealed class CustomerProfileService
 
 
     // ============================================================
+    // ADMIN - LIST ALL
+    // ============================================================
+
+    public async Task<List<ProfileResponseDto>> GetAllForAdminAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var customers =
+            await _customerRepository.GetAllAsync(
+                cancellationToken);
+
+        return customers
+            .Select(Map)
+            .ToList();
+    }
+
+
+    // ============================================================
     // CUSTOMER
     // ============================================================
 

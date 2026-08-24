@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Data.SqlClient;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using MiniCrm.Api.BackgroundServices;
 using MiniCrm.Api.ErrorHandling;
 using MiniCrm.Api.Middleware;
 using MiniCrm.Api.OpenApi;
@@ -41,6 +43,17 @@ var connectionString =
 
 builder.Services.AddPersistence(
     connectionString);
+
+
+// ================================================================
+// LOCALDB KEEP-ALIVE
+//
+// LocalDB boşta kaldığında kendini kapatıp bir sonraki bağlantıda
+// arada sırada başlatma hatası veriyor. Bu servis düzenli aralıklarla
+// hafif bir sorgu göndererek bunu önler.
+// ================================================================
+
+builder.Services.AddHostedService<LocalDbKeepAliveService>();
 
 
 // ================================================================
@@ -409,12 +422,194 @@ var app =
 
 
 // ================================================================
-// IDENTITY SEED
+// VERİTABANINI ISIT
+//
+// Burada iki yaklaşım denendi ve ikisi de tek başına yetmedi:
+//   1) EF Core bağlanmadan önce elle "sqllocaldb start" çalıştırmak —
+//      bu, ADO.NET'in kendi pasif "Auto-create" başlatmasıyla AYNI ANDA
+//      yarışa girip "WaitForMultipleObjects" hatasına (error 575) yol
+//      açabiliyordu.
+//   2) Sadece pasif auto-create'e güvenip hiç elle müdahale etmemek —
+//      bu da bazı ortamlarda (özellikle Visual Studio'nun API+WinFormUI
+//      projelerini birlikte debug modunda başlatıp sistemi
+//      yoğunlaştırdığı anlarda) LocalDB'nin kendi kendine hiç
+//      toparlanamadığı, tüm denemelerin tükendiği durumlar yaratıyordu.
+//
+// Bu yüzden burada üçüncü, TEPKİSEL bir yaklaşım kullanılıyor: ilk
+// deneme her zaman saf pasif bağlantıdır (hiçbir şeyle yarışmaz). Bir
+// deneme BAŞARISIZ OLDUKTAN SONRA (yalnızca o zaman, önceden değil)
+// "sqllocaldb start" elle çalıştırılıp örnek zorla toparlanmaya
+// çalışılır, ardından tekrar denenir. Bu, iki mekanizmanın aynı anda
+// yarışmasını engellerken (çünkü ikinci mekanizma yalnızca birincisi
+// zaten gözlemlenebilir şekilde başarısız olduktan sonra devreye
+// giriyor), kullanıcının elle yaptığı "stop/start" düzeltmesinin aynısını
+// otomatik olarak, her denemede uygular.
 // ================================================================
 
-await IdentitySeeder.SeedAsync(
-    app.Services,
-    app.Configuration);
+await WarmUpDatabaseAsync();
+
+async Task WarmUpDatabaseAsync()
+{
+    var connectionString =
+        app.Configuration.GetConnectionString("DefaultConnection");
+
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        return;
+    }
+
+    var instanceName =
+        ExtractLocalDbInstanceName(connectionString);
+
+    const int maxWarmUpAttempts = 30;
+
+    for (var attempt = 1; attempt <= maxWarmUpAttempts; attempt++)
+    {
+        try
+        {
+            await using var connection =
+                new SqlConnection(connectionString);
+
+            await connection.OpenAsync();
+
+            await using var command =
+                connection.CreateCommand();
+
+            command.CommandText = "SELECT 1";
+
+            await command.ExecuteScalarAsync();
+
+            return;
+        }
+        catch when (attempt < maxWarmUpAttempts)
+        {
+            if (instanceName is not null)
+            {
+                await TryReactiveLocalDbStartAsync(
+                    instanceName);
+            }
+
+            await Task.Delay(2000);
+        }
+        catch
+        {
+            // Isıtma denemeleri tükendi; asıl bağlantı denemesi
+            // aşağıdaki IdentitySeeder döngüsünde yine de yapılacak
+            // ve gerçek hata orada, olduğu gibi raporlanacak.
+        }
+    }
+}
+
+static string? ExtractLocalDbInstanceName(
+    string connectionString)
+{
+    const string marker = "(localdb)\\";
+
+    var markerIndex =
+        connectionString.IndexOf(
+            marker,
+            StringComparison.OrdinalIgnoreCase);
+
+    if (markerIndex < 0)
+    {
+        return null;
+    }
+
+    var nameStart =
+        markerIndex + marker.Length;
+
+    var nameEnd =
+        connectionString.IndexOf(
+            ';',
+            nameStart);
+
+    return nameEnd < 0
+        ? connectionString[nameStart..]
+        : connectionString[nameStart..nameEnd];
+}
+
+static async Task TryReactiveLocalDbStartAsync(
+    string instanceName)
+{
+    try
+    {
+        using var process = System.Diagnostics.Process.Start(
+            new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "sqllocaldb",
+                Arguments = $"start {instanceName}",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            });
+
+        if (process is not null)
+        {
+            await process.WaitForExitAsync();
+        }
+    }
+    catch
+    {
+        // Elle başlatma denemesi başarısız olursa asıl bağlantı
+        // denemesi yine de bir sonraki turda tekrar yapılacak.
+    }
+}
+
+
+// ================================================================
+// IDENTITY SEED
+//
+// LocalDB bazen uygulama başlarken henüz tam hazır olmuyor (geçici
+// "SQL Server process failed to start" hatası) — özellikle Visual
+// Studio'nun aynı anda birden fazla projeyi (API + WinFormUI) debug
+// modunda başlattığı, sistemin JIT/sembol yükleme yüzünden meşgul
+// olduğu senaryolarda WarmUpDatabaseAsync'in ayırdığı süre yetmeyebilir.
+// Bu yüzden burada da uzunca bir yeniden deneme penceresi bırakılır.
+// Tüm denemeler tükenirse hata olduğu gibi fırlatılmak yerine temiz
+// bir mesajla süreç kontrollü şekilde sonlandırılır; aksi halde bu,
+// Visual Studio'da "Kullanıcı Tarafından İşlenmeyen Özel Durum" olarak
+// görünüp hata ayıklayıcıyı koda düşürüyordu.
+// ================================================================
+
+const int maxSeedAttempts = 30;
+
+for (var attempt = 1; attempt <= maxSeedAttempts; attempt++)
+{
+    try
+    {
+        await IdentitySeeder.SeedAsync(
+            app.Services,
+            app.Configuration);
+
+        break;
+    }
+    catch (Exception exception) when (attempt < maxSeedAttempts)
+    {
+        Console.WriteLine(
+            $"Veritabanına bağlanılamadı (deneme {attempt}/{maxSeedAttempts}), 2 saniye sonra tekrar denenecek: {exception.Message}");
+
+        await Task.Delay(
+            TimeSpan.FromSeconds(2));
+    }
+    catch (Exception exception)
+    {
+        Console.WriteLine(
+            $"""
+
+            ================================================================
+            Veritabanına {maxSeedAttempts} denemeden sonra bağlanılamadı.
+            LocalDB örneği başlatılamıyor olabilir. Lütfen şunları deneyin:
+              1. Uygulamayı kapatıp tekrar başlatın.
+              2. Sorun sürerse: "sqllocaldb stop MSSQLLocalDB" ve ardından
+                 "sqllocaldb start MSSQLLocalDB" komutlarını çalıştırın.
+            Hata: {exception.Message}
+            ================================================================
+            """);
+
+        Environment.Exit(1);
+    }
+}
 
 
 // ================================================================

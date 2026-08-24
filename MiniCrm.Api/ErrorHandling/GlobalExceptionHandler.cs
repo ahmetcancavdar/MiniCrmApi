@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MiniCrm.Domain.Exceptions;
 
 namespace MiniCrm.Api.ErrorHandling;
@@ -54,6 +55,12 @@ public sealed class GlobalExceptionHandler
                 InvalidOperationException =>
                     StatusCodes.Status400BadRequest,
 
+                DbUpdateConcurrencyException =>
+                    StatusCodes.Status409Conflict,
+
+                DbUpdateException =>
+                    StatusCodes.Status409Conflict,
+
                 _ =>
                     StatusCodes.Status500InternalServerError
             };
@@ -74,6 +81,9 @@ public sealed class GlobalExceptionHandler
 
                 StatusCodes.Status404NotFound =>
                     "Not Found",
+
+                StatusCodes.Status409Conflict =>
+                    "Conflict",
 
                 StatusCodes.Status500InternalServerError =>
                     "Internal Server Error",
@@ -106,14 +116,28 @@ public sealed class GlobalExceptionHandler
 
 
         // ============================================================
-        // DON'T LEAK INTERNAL 500 DETAILS
+        // DON'T LEAK INTERNAL EXCEPTION DETAILS
+        //
+        // 500'lerin detayı zaten genel bir mesajla değiştiriliyordu.
+        // DbUpdateException/DbUpdateConcurrencyException için de aynı
+        // önlem gerekiyor: bu istisnaların .Message'ı ham EF/ADO.NET
+        // metni (tablo/kolon adları dahil) içerebilir; tam mesaj yine
+        // de LogWarning ile sunucu tarafında kaydediliyor, client'a
+        // sadece güvenli, genel bir açıklama gönderiliyor.
         // ============================================================
 
         var detail =
-            statusCode ==
-            StatusCodes.Status500InternalServerError
-                ? "An unexpected server error occurred."
-                : exception.Message;
+            exception switch
+            {
+                _ when statusCode == StatusCodes.Status500InternalServerError =>
+                    "An unexpected server error occurred.",
+
+                DbUpdateConcurrencyException or DbUpdateException =>
+                    "The operation could not be completed because the data was changed or is referenced elsewhere. Please refresh and try again.",
+
+                _ =>
+                    exception.Message
+            };
 
 
         // ============================================================

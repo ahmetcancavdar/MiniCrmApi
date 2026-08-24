@@ -34,6 +34,12 @@ public interface IOrderService
         Guid userId,
         CancellationToken cancellationToken = default);
 
+    Task<OrderResponseDto> CancelAsync(
+        Guid userId,
+        int orderId,
+        CancelOrderRequestDto request,
+        CancellationToken cancellationToken = default);
+
 
     // ============================================================
     // ADMIN

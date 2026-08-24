@@ -18,6 +18,4 @@ public interface ICategoryRepository
     Task AddAsync(
         Category category,
         CancellationToken cancellationToken = default);
-
-    void Remove(Category category);
 }

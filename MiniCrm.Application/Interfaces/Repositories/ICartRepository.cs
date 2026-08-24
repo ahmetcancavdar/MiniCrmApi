@@ -12,6 +12,10 @@ public interface ICartRepository
         int customerId,
         CancellationToken cancellationToken = default);
 
+    Task<List<Cart>> GetAllContainingProductAsync(
+        int productId,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(
         Cart cart,
         CancellationToken cancellationToken = default);

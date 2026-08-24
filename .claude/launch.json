@@ -4,8 +4,9 @@
     {
       "name": "MiniCrm.Api",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "MiniCrm.Api"],
-      "port": 5267
+      "runtimeArgs": ["run", "--project", "MiniCrm.Api", "--launch-profile", "https"],
+      "port": 7048,
+      "url": "https://localhost:7048"
     }
   ]
 }

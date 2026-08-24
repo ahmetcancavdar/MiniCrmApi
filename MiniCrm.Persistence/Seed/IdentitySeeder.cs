@@ -40,7 +40,7 @@ public static class IdentitySeeder
         {
             if (await roleManager.RoleExistsAsync(roleName))
             {
-                continue;
+                continue;   
             }
 
             var role =

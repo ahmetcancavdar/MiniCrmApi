@@ -10,15 +10,18 @@ public sealed class CategoryService : ICategoryService
 {
     private readonly ICategoryRepository _categoryRepository;
     private readonly IProductRepository _productRepository;
+    private readonly ICartRepository _cartRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public CategoryService(
         ICategoryRepository categoryRepository,
         IProductRepository productRepository,
+        ICartRepository cartRepository,
         IUnitOfWork unitOfWork)
     {
         _categoryRepository = categoryRepository;
         _productRepository = productRepository;
+        _cartRepository = cartRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -122,6 +125,15 @@ public sealed class CategoryService : ICategoryService
         else
         {
             category.Deactivate();
+
+            // Kategori pasife alınınca altındaki ürünler artık satın
+            // alınamaz hale gelir (Product.IsPurchasable); müşterilerin
+            // sepetinden de aktif olarak kaldırılmaları gerekir, aksi
+            // halde ürün silinince/pasife alınınca yaptığımız gibi
+            // sepette görünmeye devam ederdi.
+            await RemoveCategoryProductsFromAllCartsAsync(
+                category.Id,
+                cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(
@@ -141,21 +153,43 @@ public sealed class CategoryService : ICategoryService
             ?? throw new KeyNotFoundException(
                 "Category was not found.");
 
-        var products =
-            await _productRepository.GetByCategoryIdAsync(
-                id,
-                cancellationToken);
+        // Kategorinin ürünleri olsa bile soft-delete edilebilir; ürünler
+        // etkilenmez, sadece kategori kendi ürünleriyle birlikte listeden
+        // gizlenir (query filter sayesinde). Ama ürünler artık satın
+        // alınamaz olduğundan (Product.IsPurchasable, Category.IsDeleted'ı
+        // da kontrol eder) müşterilerin sepetinden de kaldırılmaları
+        // gerekir.
+        await RemoveCategoryProductsFromAllCartsAsync(
+            id,
+            cancellationToken);
 
-        if (products.Count > 0)
-        {
-            throw new InvalidOperationException(
-                "A category containing products cannot be deleted. Deactivate the category instead.");
-        }
-
-        _categoryRepository.Remove(category);
+        category.SoftDelete();
 
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
+    }
+
+    private async Task RemoveCategoryProductsFromAllCartsAsync(
+        int categoryId,
+        CancellationToken cancellationToken)
+    {
+        var products =
+            await _productRepository.GetByCategoryIdAsync(
+                categoryId,
+                cancellationToken);
+
+        foreach (var product in products)
+        {
+            var cartsContainingProduct =
+                await _cartRepository.GetAllContainingProductAsync(
+                    product.Id,
+                    cancellationToken);
+
+            foreach (var cart in cartsContainingProduct)
+            {
+                cart.RemoveProduct(product.Id);
+            }
+        }
     }
 
     private static CategoryResponseDto Map(

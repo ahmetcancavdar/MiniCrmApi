@@ -29,6 +29,8 @@ public sealed class SupportConversationRepository
         CancellationToken cancellationToken = default)
     {
         return _context.SupportConversations
+            .IgnoreQueryFilters()
+            .Where(x => !x.IsDeleted)
             .Include(x => x.Customer)
             .Include(x => x.Order)
             .Include(x => x.Messages)
@@ -48,6 +50,8 @@ public sealed class SupportConversationRepository
             CancellationToken cancellationToken = default)
     {
         return _context.SupportConversations
+            .IgnoreQueryFilters()
+            .Where(x => !x.IsDeleted)
             .AsNoTracking()
             .Include(x => x.Order)
             .Where(x =>
@@ -68,6 +72,8 @@ public sealed class SupportConversationRepository
             CancellationToken cancellationToken = default)
     {
         return _context.SupportConversations
+            .IgnoreQueryFilters()
+            .Where(x => !x.IsDeleted)
             .AsNoTracking()
             .Include(x => x.Customer)
             .Include(x => x.Order)

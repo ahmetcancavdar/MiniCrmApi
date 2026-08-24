@@ -141,4 +141,35 @@ public class Product : BaseEntity
     {
         IsActive = false;
     }
+
+    public void SoftDelete()
+    {
+        IsDeleted = true;
+    }
+
+    // Ürün soft-delete edilmiş, pasife alınmış, stoğu tükenmiş ya da
+    // kategorisi soft-delete/pasif olduğunda satın alınabilir değildir.
+    // Bu kural her yerde ayrı ayrı if'lerle tekrarlanmak yerine tek bir
+    // yerde, ürünün kendisinde tanımlanır.
+    public bool IsPurchasable =>
+        !IsDeleted &&
+        IsActive &&
+        StockQuantity > 0 &&
+        !Category.IsDeleted &&
+        Category.IsActive;
+
+    public void EnsurePurchasable(int requestedQuantity)
+    {
+        if (!IsPurchasable)
+        {
+            throw new DomainException(
+                $"Product '{Name}' is not available for purchase.");
+        }
+
+        if (requestedQuantity > StockQuantity)
+        {
+            throw new DomainException(
+                $"Insufficient stock for '{Name}'. Available stock: {StockQuantity}.");
+        }
+    }
 }

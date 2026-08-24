@@ -38,7 +38,11 @@ public sealed class OrderRepository : IOrderRepository
         int id,
         CancellationToken cancellationToken = default)
     {
+        // Sipariş verildikten sonra ürünü ya da kategorisi soft-delete
+        // edilse bile, siparişin geçmişi/kalemleri kaybolmamalı.
         return _context.Orders
+            .IgnoreQueryFilters()
+            .Where(x => !x.IsDeleted)
             .Include(x => x.Customer)
             .Include(x => x.Items)
                 .ThenInclude(x => x.Product)
@@ -62,7 +66,11 @@ public sealed class OrderRepository : IOrderRepository
     public Task<List<Order>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
+        // Müşteri kaydı (ileride) soft-delete edilse bile sipariş
+        // listeden kaybolmamalı.
         return _context.Orders
+            .IgnoreQueryFilters()
+            .Where(x => !x.IsDeleted)
             .AsNoTracking()
             .Include(x => x.Customer)
             .OrderByDescending(x => x.CreatedAtUtc)

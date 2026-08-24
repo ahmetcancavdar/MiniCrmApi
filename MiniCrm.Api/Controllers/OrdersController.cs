@@ -140,6 +140,31 @@ public class OrdersController : ControllerBase
 
 
     // ============================================================
+    // CANCEL
+    // POST /api/Orders/{id}/cancel
+    // ============================================================
+
+    [HttpPost("{id:int}/cancel")]
+    public async Task<IActionResult> Cancel(
+        int id,
+        [FromBody] CancelOrderRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var userId =
+            GetCurrentUserId();
+
+        var result =
+            await _orderService.CancelAsync(
+                userId,
+                id,
+                request,
+                cancellationToken);
+
+        return Ok(result);
+    }
+
+
+    // ============================================================
     // CURRENT CUSTOMER USER ID
     // ============================================================
 

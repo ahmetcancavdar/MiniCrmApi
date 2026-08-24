@@ -22,6 +22,4 @@ public interface ICustomerRepository
 	Task AddAsync(
 		Customer customer,
 		CancellationToken cancellationToken = default);
-
-	void Remove(Customer customer);
 }

@@ -81,9 +81,11 @@ public sealed class CartService : ICartService
                 cancellationToken);
 
         var product =
-            await GetPurchasableProductAsync(
+            await _productRepository.GetByIdAsync(
                 request.ProductId,
-                cancellationToken);
+                cancellationToken)
+            ?? throw new KeyNotFoundException(
+                "Product was not found.");
 
         var existingItem =
             cart.Items.FirstOrDefault(x =>
@@ -97,12 +99,8 @@ public sealed class CartService : ICartService
             currentQuantity +
             request.Quantity;
 
-        if (requestedTotalQuantity >
-            product.StockQuantity)
-        {
-            throw new InvalidOperationException(
-                $"Insufficient stock. Available stock: {product.StockQuantity}.");
-        }
+        product.EnsurePurchasable(
+            requestedTotalQuantity);
 
         cart.AddProduct(
             product.Id,
@@ -138,16 +136,14 @@ public sealed class CartService : ICartService
                 cancellationToken);
 
         var product =
-            await GetPurchasableProductAsync(
+            await _productRepository.GetByIdAsync(
                 productId,
-                cancellationToken);
+                cancellationToken)
+            ?? throw new KeyNotFoundException(
+                "Product was not found.");
 
-        if (request.Quantity >
-            product.StockQuantity)
-        {
-            throw new InvalidOperationException(
-                $"Insufficient stock. Available stock: {product.StockQuantity}.");
-        }
+        product.EnsurePurchasable(
+            request.Quantity);
 
         cart.ChangeProductQuantity(
             product.Id,
@@ -263,43 +259,6 @@ public sealed class CartService : ICartService
 
 
     // ============================================================
-    // PRODUCT VALIDATION
-    // ============================================================
-
-    private async Task<Product> GetPurchasableProductAsync(
-        int productId,
-        CancellationToken cancellationToken)
-    {
-        var product =
-            await _productRepository.GetByIdAsync(
-                productId,
-                cancellationToken)
-            ?? throw new KeyNotFoundException(
-                "Product was not found.");
-
-        if (!product.IsActive)
-        {
-            throw new InvalidOperationException(
-                "Product is not active.");
-        }
-
-        if (!product.Category.IsActive)
-        {
-            throw new InvalidOperationException(
-                "Product category is not active.");
-        }
-
-        if (product.StockQuantity <= 0)
-        {
-            throw new InvalidOperationException(
-                "Product is out of stock.");
-        }
-
-        return product;
-    }
-
-
-    // ============================================================
     // RELOAD
     // ============================================================
 
@@ -338,8 +297,7 @@ public sealed class CartService : ICartService
                         item.Product;
 
                     var isAvailable =
-                        product.IsActive &&
-                        product.Category.IsActive &&
+                        product.IsPurchasable &&
                         product.StockQuantity >=
                             item.Quantity;
 

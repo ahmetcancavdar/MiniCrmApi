@@ -12,4 +12,7 @@ public interface ICustomerProfileService
         Guid userId,
         UpdateProfileRequestDto request,
         CancellationToken cancellationToken = default);
+
+    Task<List<ProfileResponseDto>> GetAllForAdminAsync(
+        CancellationToken cancellationToken = default);
 }

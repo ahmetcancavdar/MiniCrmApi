@@ -18,8 +18,7 @@ public sealed class ProductRepository : IProductRepository
         int id,
         CancellationToken cancellationToken = default)
     {
-        return _context.Products
-            .Include(x => x.Category)
+        return QueryProductsWithCategory()
             .FirstOrDefaultAsync(
                 x => x.Id == id,
                 cancellationToken);
@@ -33,8 +32,7 @@ public sealed class ProductRepository : IProductRepository
             .Trim()
             .ToUpperInvariant();
 
-        return _context.Products
-            .Include(x => x.Category)
+        return QueryProductsWithCategory()
             .FirstOrDefaultAsync(
                 x => x.SKU == normalizedSku,
                 cancellationToken);
@@ -43,9 +41,8 @@ public sealed class ProductRepository : IProductRepository
     public Task<List<Product>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        return _context.Products
+        return QueryProductsWithCategory()
             .AsNoTracking()
-            .Include(x => x.Category)
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
     }
@@ -54,12 +51,26 @@ public sealed class ProductRepository : IProductRepository
         int categoryId,
         CancellationToken cancellationToken = default)
     {
-        return _context.Products
+        return QueryProductsWithCategory()
             .AsNoTracking()
-            .Include(x => x.Category)
             .Where(x => x.CategoryId == categoryId)
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
+    }
+
+    // Kategori soft-delete edilmiş olsa bile o kategorideki ürünler
+    // görünmeye devam etmeli. EF Core, Include edilen bir ilişkide
+    // karşı tarafın (Category) global soft-delete filtresini de
+    // uyguluyor; FK zorunlu olduğu için bu durumda ürün satırı da
+    // JOIN'den düşüyor. Bunu önlemek için filtreler devre dışı
+    // bırakılıp sadece ürünün kendi IsDeleted durumu elle kontrol
+    // ediliyor; Category'nin silinmiş olması ürünü etkilemiyor.
+    private IQueryable<Product> QueryProductsWithCategory()
+    {
+        return _context.Products
+            .IgnoreQueryFilters()
+            .Where(x => !x.IsDeleted)
+            .Include(x => x.Category);
     }
 
     public Task<bool> ExistsBySkuAsync(
@@ -83,10 +94,5 @@ public sealed class ProductRepository : IProductRepository
         await _context.Products.AddAsync(
             product,
             cancellationToken);
-    }
-
-    public void Remove(Product product)
-    {
-        _context.Products.Remove(product);
     }
 }

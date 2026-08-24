@@ -12,17 +12,20 @@ public sealed class ProductService : IProductService
     private readonly IProductRepository _productRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
+    private readonly ICartRepository _cartRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public ProductService(
         IProductRepository productRepository,
         ICategoryRepository categoryRepository,
         IStockMovementRepository stockMovementRepository,
+        ICartRepository cartRepository,
         IUnitOfWork unitOfWork)
     {
         _productRepository = productRepository;
         _categoryRepository = categoryRepository;
         _stockMovementRepository = stockMovementRepository;
+        _cartRepository = cartRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -33,10 +36,13 @@ public sealed class ProductService : IProductService
             await _productRepository.GetAllAsync(
                 cancellationToken);
 
+        // "Satın alınabilir mi" kuralı Product.IsPurchasable üzerinde tek
+        // yerde tanımlı (soft-delete/pasif/stok tükenmiş/kategori
+        // silinmiş-pasif); müşteri kataloğu bu kuralı burada tekrar
+        // ayrı ayrı kontrol etmek yerine doğrudan kullanır. Stoğu 0
+        // olan bir ürün de bu sayede müşteriye hiç gösterilmez.
         return products
-            .Where(x =>
-                x.IsActive &&
-                x.Category.IsActive)
+            .Where(x => x.IsPurchasable)
             .Select(Map)
             .ToList();
     }
@@ -52,8 +58,7 @@ public sealed class ProductService : IProductService
             ?? throw new KeyNotFoundException(
                 "Product was not found.");
 
-        if (!product.IsActive ||
-            !product.Category.IsActive)
+        if (!product.IsPurchasable)
         {
             throw new KeyNotFoundException(
                 "Product was not found.");
@@ -173,10 +178,37 @@ public sealed class ProductService : IProductService
             product.Deactivate();
         }
 
+        // Ürün güncelleme sonucunda satın alınamaz hale geldiyse (pasife
+        // alındı, stoğu tükendi ya da kategorisi değişti), soft-delete'te
+        // olduğu gibi müşterilerin sepetinden de aktif olarak kaldırılır;
+        // aksi halde müşteri artık satın alamayacağı bir ürünü sepetinde
+        // görmeye devam ederdi.
+        if (!product.IsPurchasable)
+        {
+            await RemoveFromAllCartsAsync(
+                product.Id,
+                cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 
         return Map(product, category.Name);
+    }
+
+    private async Task RemoveFromAllCartsAsync(
+        int productId,
+        CancellationToken cancellationToken)
+    {
+        var cartsContainingProduct =
+            await _cartRepository.GetAllContainingProductAsync(
+                productId,
+                cancellationToken);
+
+        foreach (var cart in cartsContainingProduct)
+        {
+            cart.RemoveProduct(productId);
+        }
     }
 
     public async Task DeleteAsync(
@@ -190,7 +222,18 @@ public sealed class ProductService : IProductService
             ?? throw new KeyNotFoundException(
                 "Product was not found.");
 
-        _productRepository.Remove(product);
+        // Ürün silindiğinde, henüz sipariş edilmemiş sepet kalemleri
+        // de kaldırılmalı; müşteri artık var olmayan bir ürünü
+        // sepetinde göremez.
+        await RemoveFromAllCartsAsync(
+            id,
+            cancellationToken);
+
+        // Silme, EntityState.Deleted üzerinden değil doğrudan bir
+        // domain metoduyla yapılıyor; aksi halde EF Core, aynı anda
+        // takip edilen ve bu ürüne zorunlu (required) referansı olan
+        // CartItem'lar yüzünden "ilişki koptu" hatası veriyor.
+        product.SoftDelete();
 
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);

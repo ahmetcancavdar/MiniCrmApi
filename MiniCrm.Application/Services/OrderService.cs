@@ -114,27 +114,8 @@ public sealed class OrderService
 
 		foreach (var item in activeItems)
 		{
-			var product =
-				item.Product;
-
-			if (!product.IsActive)
-			{
-				throw new InvalidOperationException(
-					$"Product '{product.Name}' is not active.");
-			}
-
-			if (!product.Category.IsActive)
-			{
-				throw new InvalidOperationException(
-					$"Category of product '{product.Name}' is not active.");
-			}
-
-			if (product.StockQuantity <
-				item.Quantity)
-			{
-				throw new InvalidOperationException(
-					$"Insufficient stock for '{product.Name}'. Available stock: {product.StockQuantity}.");
-			}
+			item.Product.EnsurePurchasable(
+				item.Quantity);
 		}
 
 		var shippingAddress =
@@ -162,6 +143,13 @@ public sealed class OrderService
 				item.Product.Price,
 				item.Quantity);
 		}
+
+		// Sipariş oluşturulduğu an ürünler sepetten kaldırılır; doğrulama
+		// bekleniyor olması sepette görünmeye devam etmesini gerektirmez
+		// ve müşteri aynı ürünü doğrulamadan önce tekrar sipariş edebilir
+		// gibi kafa karıştırıcı bir duruma yol açmaz. Doğrulama başarısız
+		// olur/süresi dolarsa müşteri ürünleri tekrar sepete ekleyebilir.
+		cart.Clear();
 
 		var utcNow =
 			DateTime.UtcNow;
@@ -491,6 +479,88 @@ public sealed class OrderService
 				customer.Id,
 				orderId,
 				cancellationToken);
+
+		return Map(order);
+	}
+
+
+	// ============================================================
+	// CUSTOMER - CANCEL
+	// ============================================================
+
+	public async Task<OrderResponseDto> CancelAsync(
+		Guid userId,
+		int orderId,
+		CancelOrderRequestDto request,
+		CancellationToken cancellationToken = default)
+	{
+		var customer =
+			await GetCustomerAsync(
+				userId,
+				cancellationToken);
+
+		var order =
+			await GetOwnedOrderAsync(
+				customer.Id,
+				orderId,
+				cancellationToken);
+
+		var previousStatus =
+			order.Status;
+
+		var requiresRestock =
+			previousStatus is
+				OrderStatus.Confirmed
+				or OrderStatus.Preparing;
+
+		if (requiresRestock)
+		{
+			foreach (var item in order.Items)
+			{
+				var product =
+					item.Product;
+
+				var previousQuantity =
+					product.StockQuantity;
+
+				product.IncreaseStock(
+					item.Quantity);
+
+				var movement =
+					new StockMovement(
+						product.Id,
+						StockMovementType.OrderCancelledRestock,
+						item.Quantity,
+						previousQuantity,
+						product.StockQuantity,
+						$"Order cancelled by customer: {order.OrderNumber}. Reason: {request.Reason.Trim()}");
+
+				await _stockMovementRepository.AddAsync(
+					movement,
+					cancellationToken);
+			}
+		}
+
+		order.Cancel(
+			DateTime.UtcNow,
+			request.Reason);
+
+		await _unitOfWork.SaveChangesAsync(
+			cancellationToken);
+
+		var emailMessage =
+			$"""
+            Your order has been cancelled.
+
+            Order Number: {order.OrderNumber}
+            Reason: {order.CancellationReason}
+            """;
+
+		await SendStatusEmailAsync(
+			order,
+			"Cancelled",
+			emailMessage,
+			cancellationToken);
 
 		return Map(order);
 	}

@@ -153,7 +153,7 @@ public class SupportConversation : BaseEntity
         Status =
             SupportConversationStatus.Closed;
 
-        ClosedAtUtc =
+        ClosedAtUtc =   
             DateTime.UtcNow;
     }
 

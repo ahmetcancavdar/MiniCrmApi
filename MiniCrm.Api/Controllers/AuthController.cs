@@ -29,22 +29,12 @@ public class AuthController : ControllerBase
         [FromBody] RegisterRequestDto request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var result =
-                await _authService.RegisterAsync(
-                    request,
-                    cancellationToken);
+        var result =
+            await _authService.RegisterAsync(
+                request,
+                cancellationToken);
 
-            return Ok(result);
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new
-            {
-                message = exception.Message
-            });
-        }
+        return Ok(result);
     }
 
 
@@ -59,22 +49,12 @@ public class AuthController : ControllerBase
         [FromBody] LoginRequestDto request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var result =
-                await _authService.LoginAsync(
-                    request,
-                    cancellationToken);
+        var result =
+            await _authService.LoginAsync(
+                request,
+                cancellationToken);
 
-            return Ok(result);
-        }
-        catch (UnauthorizedAccessException exception)
-        {
-            return Unauthorized(new
-            {
-                message = exception.Message
-            });
-        }
+        return Ok(result);
     }
 
 

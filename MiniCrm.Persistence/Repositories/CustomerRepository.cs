@@ -62,9 +62,4 @@ public sealed class CustomerRepository : ICustomerRepository
             customer,
             cancellationToken);
     }
-
-    public void Remove(Customer customer)
-    {
-        _context.Customers.Remove(customer);
-    }
 }

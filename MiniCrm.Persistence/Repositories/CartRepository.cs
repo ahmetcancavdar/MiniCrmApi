@@ -30,7 +30,12 @@ public sealed class CartRepository
         int customerId,
         CancellationToken cancellationToken = default)
     {
+        // Bir ürün ya da kategorisi soft-delete edilmiş olsa bile,
+        // sepetteki satır kaybolmamalı (CartService zaten sepet
+        // kalemlerinin kendi IsDeleted durumunu elle kontrol ediyor).
         return _context.Carts
+            .IgnoreQueryFilters()
+            .Where(x => !x.IsDeleted)
             .Include(x => x.Items)
                 .ThenInclude(x => x.Product)
                     .ThenInclude(x => x.Category)
@@ -46,5 +51,17 @@ public sealed class CartRepository
         await _context.Carts.AddAsync(
             cart,
             cancellationToken);
+    }
+
+    public Task<List<Cart>> GetAllContainingProductAsync(
+        int productId,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Carts
+            .Include(x => x.Items)
+            .Where(x => x.Items.Any(i =>
+                i.ProductId == productId &&
+                !i.IsDeleted))
+            .ToListAsync(cancellationToken);
     }
 }

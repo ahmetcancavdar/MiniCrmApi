@@ -49,4 +49,9 @@ public class Category : BaseEntity
     {
         IsActive = false;
     }
+
+    public void SoftDelete()
+    {
+        IsDeleted = true;
+    }
 }
