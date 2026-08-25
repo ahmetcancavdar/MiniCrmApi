@@ -73,7 +73,7 @@ namespace WinFormUI
             TarihLbl = new Label();
             siparisNolbl = new Label();
             MesajlarLbl = new Label();
-            MesajlarListBox = new ListBox();
+            MesajlarTextBox = new TextBox();
             mesajTextBox = new TextBox();
             yanitbutton = new Button();
             konusmayıkapatButton = new Button();
@@ -510,14 +510,14 @@ namespace WinFormUI
             panelDestekDetay.Controls.Add(TarihLbl);
             panelDestekDetay.Controls.Add(siparisNolbl);
             panelDestekDetay.Controls.Add(MesajlarLbl);
-            panelDestekDetay.Controls.Add(MesajlarListBox);
+            panelDestekDetay.Controls.Add(MesajlarTextBox);
             panelDestekDetay.Controls.Add(mesajTextBox);
             panelDestekDetay.Controls.Add(yanitbutton);
             panelDestekDetay.Controls.Add(konusmayıkapatButton);
             panelDestekDetay.Dock = DockStyle.Right;
-            panelDestekDetay.Location = new Point(429, 3);
+            panelDestekDetay.Location = new Point(372, 3);
             panelDestekDetay.Name = "panelDestekDetay";
-            panelDestekDetay.Size = new Size(353, 405);
+            panelDestekDetay.Size = new Size(410, 405);
             panelDestekDetay.TabIndex = 3;
             // 
             // Destekdetaylbl
@@ -585,21 +585,28 @@ namespace WinFormUI
             MesajlarLbl.TabIndex = 10;
             MesajlarLbl.Text = "------------------------- Mesajlar -------------------------";
             // 
-            // MesajlarListBox
-            // 
-            MesajlarListBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            MesajlarListBox.BackColor = SystemColors.Window;
-            MesajlarListBox.Location = new Point(6, 175);
-            MesajlarListBox.Name = "MesajlarListBox";
-            MesajlarListBox.Size = new Size(341, 124);
-            MesajlarListBox.TabIndex = 11;
+            // MesajlarTextBox
+            //
+            // Uzun mesajların kesilmeden alt satıra geçmesi (word-wrap) ve
+            // metnin seçilip kopyalanabilmesi için ListBox yerine salt-okunur,
+            // çok satırlı bir TextBox kullanılıyor; ListBox tek satır çizer ve
+            // metin seçimini desteklemez.
+            MesajlarTextBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            MesajlarTextBox.BackColor = SystemColors.Window;
+            MesajlarTextBox.Location = new Point(6, 175);
+            MesajlarTextBox.Multiline = true;
+            MesajlarTextBox.Name = "MesajlarTextBox";
+            MesajlarTextBox.ReadOnly = true;
+            MesajlarTextBox.ScrollBars = ScrollBars.Vertical;
+            MesajlarTextBox.Size = new Size(398, 124);
+            MesajlarTextBox.TabIndex = 11;
             // 
             // mesajTextBox
             // 
             mesajTextBox.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             mesajTextBox.Location = new Point(6, 319);
             mesajTextBox.Name = "mesajTextBox";
-            mesajTextBox.Size = new Size(341, 27);
+            mesajTextBox.Size = new Size(398, 27);
             mesajTextBox.TabIndex = 12;
             mesajTextBox.TextChanged += mesajTextBox_TextChanged;
             // 
@@ -737,7 +744,7 @@ namespace WinFormUI
         private Label DurumLbl;
         private Label epostaLbl;
         private Label MesajlarLbl;
-        private ListBox MesajlarListBox;
+        private TextBox MesajlarTextBox;
         private TextBox mesajTextBox;
         private Button yanitbutton;
         private Button konusmayıkapatButton;

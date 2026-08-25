@@ -1158,7 +1158,7 @@ namespace WinFormUI
                 DurumLbl.Text = "Durum: -";
                 TarihLbl.Text = "Tarih: -";
                 siparisNolbl.Text = "Sipariş No: -";
-                MesajlarListBox.Items.Clear();
+                MesajlarTextBox.Text = string.Empty;
                 mesajTextBox.Text = string.Empty;
                 yanitbutton.Enabled = false;
                 mesajTextBox.Enabled = false;
@@ -1199,13 +1199,15 @@ namespace WinFormUI
                 mesajTextBox.Enabled = !isClosed;
                 konusmayıkapatButton.Enabled = !isClosed;
 
-                MesajlarListBox.Items.Clear();
-
-                foreach (var message in detail.Conversation.Messages)
+                var mesajSatirlari = detail.Conversation.Messages.Select(message =>
                 {
                     var gonderen = message.SenderType == "Customer" ? "Müşteri" : "Admin";
-                    MesajlarListBox.Items.Add($"[{message.CreatedAtUtc:dd.MM HH:mm}] {gonderen}: {message.Message}");
-                }
+                    return $"[{message.CreatedAtUtc:dd.MM HH:mm}] {gonderen}: {message.Message}";
+                });
+
+                MesajlarTextBox.Text = string.Join(Environment.NewLine + Environment.NewLine, mesajSatirlari);
+                MesajlarTextBox.SelectionStart = MesajlarTextBox.Text.Length;
+                MesajlarTextBox.ScrollToCaret();
 
                 mesajTextBox.Text = string.Empty;
             }

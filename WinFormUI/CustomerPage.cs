@@ -1146,13 +1146,15 @@ namespace WinFormUI
                 YanıtGondermeTextBox.Enabled = isOpen;
                 YanıtGondermeButton.Enabled = isOpen;
 
-                listBox1.Items.Clear();
-
-                foreach (var message in conversation.Messages)
+                var mesajSatirlari = conversation.Messages.Select(message =>
                 {
                     var gonderen = message.SenderType == "Customer" ? "Siz" : "Destek";
-                    listBox1.Items.Add($"[{message.CreatedAtUtc:dd.MM HH:mm}] {gonderen}: {message.Message}");
-                }
+                    return $"[{message.CreatedAtUtc:dd.MM HH:mm}] {gonderen}: {message.Message}";
+                });
+
+                listBox1.Text = string.Join(Environment.NewLine + Environment.NewLine, mesajSatirlari);
+                listBox1.SelectionStart = listBox1.Text.Length;
+                listBox1.ScrollToCaret();
             }
             catch (Exception ex)
             {
@@ -1168,7 +1170,7 @@ namespace WinFormUI
         {
             _selectedSupportConversationId = null;
             DestekDurumu.Text = "Durum:";
-            listBox1.Items.Clear();
+            listBox1.Text = string.Empty;
             YanıtGondermeTextBox.Enabled = false;
             YanıtGondermeButton.Enabled = false;
         }

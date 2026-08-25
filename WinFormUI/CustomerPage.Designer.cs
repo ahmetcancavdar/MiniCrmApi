@@ -56,7 +56,7 @@
             DestekDetayTableLayoutPanel = new TableLayoutPanel();
             DestekDurumu = new Label();
             MesajlarAraCızgıLabel = new Label();
-            listBox1 = new ListBox();
+            listBox1 = new TextBox();
             YanıtGondermeTextBox = new TextBox();
             YanıtGondermeButton = new Button();
             CustomerTabControl.SuspendLayout();
@@ -436,10 +436,17 @@
             //
             // listBox1
             //
+            // Uzun mesajların kesilmeden alt satıra geçmesi (word-wrap) ve
+            // metnin seçilip kopyalanabilmesi için ListBox yerine salt-okunur,
+            // çok satırlı bir TextBox kullanılıyor; ListBox tek satır çizer ve
+            // metin seçimini desteklemez.
+            listBox1.BackColor = SystemColors.Window;
             listBox1.Dock = DockStyle.Fill;
-            listBox1.IntegralHeight = false;
             listBox1.Margin = new Padding(0, 0, 0, 6);
+            listBox1.Multiline = true;
             listBox1.Name = "listBox1";
+            listBox1.ReadOnly = true;
+            listBox1.ScrollBars = ScrollBars.Vertical;
             listBox1.Size = new Size(403, 168);
             listBox1.TabIndex = 2;
             //
@@ -533,7 +540,7 @@
         private Label DestekDurumu;
         private Label MesajlarAraCızgıLabel;
         private TextBox YanıtGondermeTextBox;
-        private ListBox listBox1;
+        private TextBox listBox1;
         private Button YanıtGondermeButton;
     }
 }
