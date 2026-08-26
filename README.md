@@ -1,6 +1,6 @@
 # MiniCrm
 
-MiniCrm; müşteri yönetimi, ürün ve stok takibi, kalıcı sepet, sipariş akışı, e-posta doğrulama ve müşteri-admin destek sohbetlerini tek bir sistemde birleştiren, **katmanlı mimariyle** geliştirilmiş bir CRM/e-ticaret backend'i ve buna bağlı çalışan bir **WinForms masaüstü istemcisidir**.
+MiniCrm; potansiyel müşteri (lead) takibi, müşteri yönetimi, ürün ve stok takibi, kalıcı sepet ve adres defteri, sipariş akışı, e-posta doğrulama ve müşteri-admin destek sohbetlerini tek bir sistemde birleştiren, **katmanlı mimariyle** geliştirilmiş bir CRM/e-ticaret backend'i ve buna bağlı çalışan bir **WinForms masaüstü istemcisidir**.
 
 Proje iki ana parçadan oluşur:
 
@@ -19,6 +19,7 @@ Backend; SOLID prensipleri, Repository + Service yaklaşımı, EF Core Code Firs
 - [Proje Yapısı](#proje-yapısı)
 - [Veri Modeli (ER Diyagramı)](#veri-modeli-er-diyagramı)
 - [Temel Özellikler](#temel-özellikler)
+- [Lead Yönetimi](#lead-yönetimi)
 - [Kimlik Doğrulama ve Yetkilendirme](#kimlik-doğrulama-ve-yetkilendirme)
 - [Sipariş Akışı](#sipariş-akışı)
 - [Destek Sohbetleri](#destek-sohbetleri)
@@ -38,12 +39,14 @@ Backend; SOLID prensipleri, Repository + Service yaklaşımı, EF Core Code Firs
 
 # Projenin Amacı
 
-MiniCrm'in amacı klasik bir CRUD uygulamasının ötesine geçen, birbirine bağlı gerçek iş süreçlerini uçtan uca (backend + masaüstü istemci) yöneten bir CRM/e-ticaret sistemi oluşturmaktır.
+MiniCrm'in amacı klasik bir CRUD uygulamasının ötesine geçen, satış öncesinden (lead) satış sonrasına (destek) kadar birbirine bağlı gerçek iş süreçlerini uçtan uca (backend + masaüstü istemci) yöneten bir CRM/e-ticaret sistemi oluşturmaktır.
 
 Sistem içerisinde şu süreçler birbiriyle ilişkili şekilde çalışır:
 
+- potansiyel müşteri (**lead**) kaydı, takibi ve gerçek müşteriye dönüştürülmesi,
 - kullanıcı kayıt ve giriş işlemleri (JWT),
-- müşteri profili ve adres yönetimi,
+- kullanıcının kendi hesabını yönetmesi: profil bilgileri, **şifre değiştirme**, **e-posta değiştirme**,
+- müşteri **adres defteri** ve bu adreslerin sipariş sırasında doğrudan seçilebilmesi,
 - kategori ve ürün yönetimi (soft-delete uyumlu),
 - stok takibi ve stok hareket geçmişi,
 - kalıcı (veritabanı tabanlı) sepet,
@@ -62,7 +65,7 @@ Sistem içerisinde şu süreçler birbiriyle ilişkili şekilde çalışır:
 - **ASP.NET Core Web API**
 - **Entity Framework Core 10** (Code First)
 - **SQL Server / SQL Server LocalDB**
-- **ASP.NET Core Identity**
+- **ASP.NET Core Identity** (lockout, şifre politikası, şifre/e-posta değiştirme)
 - **JWT Bearer Authentication** + Role-Based Authorization
 - **OpenAPI / Swagger**
 - **SMTP** (e-posta doğrulama ve bildirimler)
@@ -130,9 +133,9 @@ flowchart TB
 
 Sistemin temel iş nesnelerini ve business rule'larını içerir.
 
-Entity'ler: `Customer`, `CustomerAddress`, `Category`, `Product`, `StockMovement`, `Cart`, `CartItem`, `Order`, `OrderItem`, `OrderVerification`, `SupportConversation`, `SupportMessage`, `EmailLog`.
+Entity'ler: `Lead`, `LeadNote`, `Customer`, `CustomerAddress`, `Category`, `Product`, `StockMovement`, `Cart`, `CartItem`, `Order`, `OrderItem`, `OrderVerification`, `SupportConversation`, `SupportMessage`, `EmailLog`.
 
-Ayrıca: enum'lar, value object'ler (`OrderAddress`), `DomainException`, entity davranışları (ör. `Product.EnsurePurchasable`, `Order.Confirm`, `Cart.RemoveProduct`).
+Ayrıca: enum'lar (`LeadStatus`, `LeadSource` dahil), value object'ler (`OrderAddress`), `DomainException`, entity davranışları (ör. `Product.EnsurePurchasable`, `Order.Confirm`, `Cart.RemoveProduct`, `Lead.ConvertToCustomer`).
 
 ## MiniCrm.Application
 
@@ -144,7 +147,7 @@ Controller → IOrderService → OrderService → IOrderRepository → Persisten
 
 ## MiniCrm.Persistence
 
-Veritabanı erişim katmanı: `AppDbContext`, EF Core entity configuration'ları, repository implementasyonları, ASP.NET Core Identity entegrasyonu, migration'lar, `UnitOfWork`, `AuthService`, identity seeding.
+Veritabanı erişim katmanı: `AppDbContext`, EF Core entity configuration'ları, repository implementasyonları, ASP.NET Core Identity entegrasyonu, migration'lar, `UnitOfWork`, `AuthService` (login, register, şifre/e-posta değiştirme), `LeadService` (lead yaşam döngüsü ve müşteriye dönüştürme), identity seeding.
 
 ## MiniCrm.Infrastructure
 
@@ -158,8 +161,10 @@ HTTP katmanı: controller'lar, authentication/authorization middleware'i, Swagge
 
 Backend'e JWT ile bağlanan masaüstü istemci. İki ayrı panel sunar:
 
-- **AdminPage** — ürün/kategori/sipariş/müşteri/destek sohbeti yönetimi
+- **AdminPage** — ürün/kategori/sipariş/müşteri/destek sohbeti/**lead** yönetimi
 - **CustomerPage** — ürün kataloğu, sepet, siparişler, destek sohbeti
+
+Her iki panelde de sağ üstteki dişli butonu artık ortak bir **"Hesabım"** ekranı açar (profil, şifre/e-posta değiştirme, müşteri için adres defteri).
 
 ---
 
@@ -169,7 +174,7 @@ Backend'e JWT ile bağlanan masaüstü istemci. İki ayrı panel sunar:
 MiniCrm
 │
 ├── MiniCrm.Api
-│   ├── Controllers
+│   ├── Controllers            (LeadsController dahil)
 │   ├── BackgroundServices        (LocalDB keep-alive vb.)
 │   ├── ErrorHandling
 │   ├── Middleware
@@ -179,7 +184,7 @@ MiniCrm
 │
 ├── MiniCrm.Application
 │   ├── Common
-│   ├── DTOs
+│   ├── DTOs                    (Leads, Auth/Change*, Addresses, Profile ...)
 │   ├── Interfaces
 │   │   ├── Repositories
 │   │   └── Services
@@ -187,8 +192,8 @@ MiniCrm
 │
 ├── MiniCrm.Domain
 │   ├── Common
-│   ├── Entities
-│   ├── Enums
+│   ├── Entities                (Lead, LeadNote dahil)
+│   ├── Enums                    (LeadStatus, LeadSource dahil)
 │   ├── Exceptions
 │   └── ValueObjects
 │
@@ -199,7 +204,7 @@ MiniCrm
 │   ├── Migrations
 │   ├── Repositories
 │   ├── Seed
-│   └── Services
+│   └── Services                 (AuthService, LeadService dahil)
 │
 ├── MiniCrm.Infrastructure
 │   ├── Authentication
@@ -208,12 +213,16 @@ MiniCrm
 │   └── Security
 │
 ├── WinFormUI
-│   ├── AdminPage.cs / .Designer.cs
+│   ├── AdminPage.cs / .Designer.cs          (Leadler sekmesi dahil)
 │   ├── CustomerPage.cs / .Designer.cs
+│   ├── AccountForm.cs                        (Hesabım: profil, şifre/e-posta, adres defteri)
+│   ├── AddressPickerForm.cs, SavedAddressEditForm.cs
+│   ├── LeadEditForm.cs, LeadDetailForm.cs
 │   ├── Login.cs, KayıtOlmaForm.cs
-│   ├── AddressForm.cs, ProductEditForm.cs, CategoryEditForm.cs
+│   ├── ProductEditForm.cs, CategoryEditForm.cs
 │   ├── NewSupportRequestForm.cs
-│   └── OrderVerificationForm.cs
+│   ├── OrderVerificationForm.cs
+│   └── ApiConfig.cs                          (tek noktadan API adresi)
 │
 └── MiniCrm.sln
 ```
@@ -229,6 +238,9 @@ erDiagram
     CUSTOMER ||--o{ ORDER : "siparişleri"
     CUSTOMER ||--o{ SUPPORT_CONVERSATION : "destek sohbetleri"
     CUSTOMER ||--o{ EMAIL_LOG : "e-posta kayıtları"
+    CUSTOMER ||--o| LEAD : "dönüştüğü lead (opsiyonel)"
+
+    LEAD ||--o{ LEAD_NOTE : "notları"
 
     CATEGORY ||--o{ PRODUCT : "ürünleri"
 
@@ -243,6 +255,28 @@ erDiagram
     ORDER ||--o{ SUPPORT_CONVERSATION : "ilişkili sohbetler (opsiyonel)"
 
     SUPPORT_CONVERSATION ||--o{ SUPPORT_MESSAGE : "mesajları"
+
+    LEAD {
+        int Id PK
+        string FullName
+        string CompanyName
+        string Email
+        string Phone
+        enum Source
+        enum Status
+        string InterestArea
+        string Notes
+        guid AssignedAdminUserId
+        datetime NextFollowUpDate
+        int ConvertedCustomerId FK "opsiyonel"
+    }
+
+    LEAD_NOTE {
+        int Id PK
+        int LeadId FK
+        guid AdminUserId
+        string Note
+    }
 
     CUSTOMER {
         int Id PK
@@ -374,9 +408,20 @@ Tüm entity'ler `BaseEntity`'den (`Id`, `CreatedAtUtc`, `UpdatedAtUtc`, `IsDelet
 
 # Temel Özellikler
 
-## Müşteri Yönetimi
+## Müşteri Yönetimi ve Hesap
 
-Müşteriler sisteme kayıt olabilir, giriş yapabilir, profilini görüntüleyip ad/telefon/şirket bilgilerini güncelleyebilir, birden fazla adres ekleyip varsayılan adres belirleyebilir. Kullanıcı e-posta adresi Identity hesabıyla ilişkili olduğu için profil güncellemesinde doğrudan değiştirilmez.
+Müşteriler sisteme kayıt olabilir, giriş yapabilir. Sağ üstteki **"Hesabım"** ekranından (hem Admin hem Customer için ortak, role göre uyarlanan tek bir form):
+
+- profil bilgilerini (ad/telefon/şirket) görüntüleyip güncelleyebilir,
+- **şifresini değiştirebilir** (mevcut şifre doğrulaması + Identity parola politikası ile),
+- **e-posta adresini değiştirebilir** (mevcut şifre onayı + benzersizlik kontrolüyle; `Customer.Email` otomatik senkronize edilir),
+- (yalnızca Customer) **adres defterini** yönetebilir: adres ekleyip düzenleyebilir, varsayılan adresi istediği zaman değiştirip kaldırabilir (aynı anda yalnızca bir adres varsayılan olabilir).
+
+Şifre ve e-posta değiştirme uçları, art arda yanlış "mevcut şifre" denemelerinde login akışıyla aynı Identity lockout mekanizmasına tabidir (brute-force koruması).
+
+## Adres Defteri ve Checkout Entegrasyonu
+
+Müşterinin kaydettiği adresler artık sadece saklanmakla kalmıyor, **checkout akışında doğrudan kullanılıyor**: sipariş verirken açılan adres seçim ekranı kayıtlı adresleri listeler, alıcı adı/telefon bilgisi profilden ön doldurulur, hiç kayıtlı adres yoksa önce bir tane eklenmesi istenir. Tek kullanımlık/kaydedilmeyen adres girişi kaldırılmıştır — adres defteri gerçek anlamda tek doğruluk kaynağıdır.
 
 ## Kategori Yönetimi
 
@@ -398,6 +443,49 @@ Her müşterinin veritabanında kalıcı bir sepeti vardır. Bir ürün **herhan
 
 ---
 
+# Lead Yönetimi
+
+MiniCrm'i salt bir sipariş/destek sistemi olmaktan çıkarıp gerçek bir CRM'e dönüştüren modül. Henüz müşteri olmamış, ama olma ihtimali bulunan kişi/firmalar **lead** olarak takip edilir; bu modül tamamen admin kontrolündedir (self-servis kayıt yoktur).
+
+```mermaid
+stateDiagram-v2
+    [*] --> New: Lead oluşturuldu
+    New --> Contacted: İletişime geçildi
+    Contacted --> Qualified: Potansiyel olarak değerlendirildi
+    Qualified --> ProposalSent: Teklif gönderildi
+    ProposalSent --> Converted: Müşteriye dönüştürüldü
+    New --> Lost: Kaybedildi
+    Contacted --> Lost: Kaybedildi
+    Qualified --> Lost: Kaybedildi
+    ProposalSent --> Lost: Kaybedildi
+
+    Converted --> [*]
+    Lost --> [*]
+```
+
+## Temel Yapılar
+
+- **Lead** — ad/soyad, firma, e-posta, telefon, `Source` (Website, PhoneCall, Email, SocialMedia, Fair, Reference, Other), `Status`, ilgi alanı, sonraki takip tarihi, dönüştüğü müşteri (varsa).
+- **LeadNote** — bir lead'e eklenen notlar; yalnızca `Lead.AddNote(...)` üzerinden oluşturulabilir.
+- **Otomatik durum notu:** Bir lead'in durumu değiştirildiğinde ("Yeni → İletişime Geçildi" gibi), bu geçiş **otomatik olarak** bir `LeadNote` kaydı olarak da düşer — hangi istemciden (WinForms, Swagger) yapılırsa yapılsın, durum geçmişi notlar listesinde tam ve tutarlı kalır. `Lost` durumuna geçerken girilen "neden" de aynı nota eklenir.
+
+## Aynı E-posta Kontrolü
+
+Bir e-posta ile `Lost`/`Converted` **dışında** aktif bir lead varsa yeni lead oluşturulamaz/güncellenemez; lead zaten bu e-postayla bir Customer'a karşılık geliyorsa da engellenir.
+
+## Müşteriye Dönüştürme
+
+`POST /api/Leads/{id}/convert`:
+
+1. Lead zaten `Converted` ise reddedilir.
+2. Aynı e-posta ile zaten bir `Customer` varsa, yeni hesap açılmadan lead doğrudan o müşteriye bağlanır.
+3. Yoksa: yeni bir `ApplicationUser` (Customer rolünde), `Customer` ve boş `Cart` **tek bir transaction içinde** oluşturulur; rastgele bir geçici şifre üretilip **SMTP ile** lead'in e-posta adresine gönderilir (gönderim `EmailLog`'a `LeadConverted` tipiyle kaydedilir, gönderim başarısız olsa da dönüşüm iptal edilmez).
+4. Lead `Converted` durumuna geçer ve `ConvertedCustomerId` ile ilişkilendirilir.
+
+Bu noktadan sonra kişi normal `/api/Auth/login` (ve WinFormUI `CustomerPage`) ile sisteme giriş yapabilir hale gelir.
+
+---
+
 # Kimlik Doğrulama ve Yetkilendirme
 
 Sistem ASP.NET Core Identity ve JWT kullanır. Roller: `Admin`, `Customer`. JWT içinde User ID, Email, Role ve JWT ID claim'leri bulunur.
@@ -409,6 +497,17 @@ Kaynak bulunamadı        → 404 Not Found
 Business rule ihlali     → 400 Bad Request
 Concurrency çakışması    → 409 Conflict
 ```
+
+## Hesap Uçları
+
+| Uç | Açıklama |
+|---|---|
+| `POST /api/Auth/register` | Customer hesabı oluşturur |
+| `POST /api/Auth/login` | JWT üretir |
+| `POST /api/Auth/change-password` | Mevcut şifre doğrulanarak şifre değiştirilir (rol bağımsız — Admin da Customer da kullanır) |
+| `POST /api/Auth/change-email` | Mevcut şifre doğrulanarak e-posta değiştirilir; benzersizlik kontrolü yapılır |
+
+`change-password`/`change-email` uçlarında yanlış "mevcut şifre" denemeleri, login akışındaki `AccessFailedAsync`/lockout mekanizmasına aynı şekilde dahildir — art arda 5 hatalı denemeden sonra hesap geçici olarak kilitlenir (doğru şifre girilse bile).
 
 ---
 
@@ -432,10 +531,11 @@ stateDiagram-v2
 
 ## Checkout
 
-1. Sepet kontrol edilir, ürünlerin hâlâ satın alınabilir olduğu doğrulanır (`Product.EnsurePurchasable`).
-2. Sipariş `PendingVerification` durumunda oluşturulur, sepet **hemen** temizlenir.
-3. 6 haneli doğrulama kodu üretilir; kod düz metin olarak saklanmaz, HMAC tabanlı hash'i saklanır.
-4. SMTP üzerinden kullanıcıya kod gönderilir (gönderilemese bile checkout başarısız olmaz, durum ayrıca raporlanır).
+1. Müşteri, kayıtlı adres defterinden bir **teslimat adresi seçer** (yoksa önce bir tane ekler); alıcı adı/telefon profilinden ön doldurulur.
+2. Sepet kontrol edilir, ürünlerin hâlâ satın alınabilir olduğu doğrulanır (`Product.EnsurePurchasable`).
+3. Sipariş `PendingVerification` durumunda oluşturulur, sepet **hemen** temizlenir.
+4. 6 haneli doğrulama kodu üretilir; kod düz metin olarak saklanmaz, HMAC tabanlı hash'i saklanır.
+5. SMTP üzerinden kullanıcıya kod gönderilir (gönderilemese bile checkout başarısız olmaz, durum ayrıca raporlanır).
 
 Doğrulama başarılı olduğunda stok düşürülür, ilgili `StockMovement` oluşturulur, doğrulama kaydı tamamlanır ve onay e-postası gönderilir. Doğrulama kodlarında süre sonu kontrolü ve maksimum başarısız deneme limiti (5) bulunur.
 
@@ -475,26 +575,35 @@ sequenceDiagram
 
 # WinFormUI Masaüstü İstemcisi
 
-WinForms tabanlı masaüstü istemci, backend'e **yalnızca HTTP/JSON üzerinden** (JWT ile) bağlanır; hiçbir backend projesine derleme zamanı referansı yoktur.
+WinForms tabanlı masaüstü istemci, backend'e **yalnızca HTTP/JSON üzerinden** (JWT ile) bağlanır; hiçbir backend projesine derleme zamanı referansı yoktur. API adresi tek bir noktadan (`ApiConfig.BaseUrl`) yönetilir.
 
 ## AdminPage
 
 - Ürün/kategori CRUD, stok ayarlama
 - Sipariş listesi ve durum yönetimi (hazırla / kargola / teslim et / iptal et) — butonlar sadece geçerli durum geçişlerinde aktif olur
-- Müşteri listesi
+- Müşteri listesi ve detayı — liste (üst) / detay (alt) `SplitContainer` ile ortadan bölünür, pencere büyüyünce oran korunur
 - Destek sohbetleri: listeleme, yanıtlama, kapatma
+- **Leadler sekmesi:** durum/kaynak filtreleme, arama, lead ekleme/düzenleme, detay ekranından not ekleme + durum değiştirme + müşteriye dönüştürme
 
 ## CustomerPage
 
 - Ürün kataloğu ve sepete ekleme
-- Sepet yönetimi ve checkout
+- Sepet yönetimi ve checkout (kayıtlı adres seçimiyle)
 - E-posta doğrulama akışı (`OrderVerificationForm`)
 - Sipariş geçmişi ve iptal
 - Destek sekmesi: sol tarafta sohbet listesi, sağ tarafta seçili sohbetin mesajları ve yanıt kutusu — iki panel `SplitContainer` ile bölünür (asla üst üste binmez), pencere yeniden boyutlandırıldığında oran korunur
 
-## Dayanıklılık
+## Hesabım
+
+Her iki panelin sağ üstündeki dişli butonu artık ortak bir `AccountForm` açar:
+
+- Admin için: e-posta/rol görüntüleme + e-posta ve şifre değiştirme.
+- Customer için: bunlara ek olarak profil düzenleme ve adres defteri yönetimi.
+
+## Dayanıklılık ve Navigasyon
 
 - Beklenmeyen istisnalar `Application.ThreadException` / `AppDomain.UnhandledException` ile yakalanır; uygulama çökmez, kullanıcıya mesaj kutusu gösterilir.
+- `Login`, uygulamanın gerçek ana formudur (`Application.Run(new Login())`); diğer ekranlar (Kayıt Ol, Admin, Customer paneli) açılırken sadece gizlenir. Bu ekranlardan herhangi biri pencere kapatma (X) ile kapatılırsa kullanıcı otomatik olarak Login ekranına döner — hiçbir noktada görünmez şekilde arka planda çalışmaya devam eden bir "hayalet" pencere kalmaz.
 - Durum değiştiren butonlar istek sürerken devre dışı bırakılır (çift tıklama koruması).
 
 ---
@@ -545,9 +654,11 @@ API merkezi `GlobalExceptionHandler` (`IExceptionHandler`) kullanır; hatalar `P
 
 Beklenmeyen `500` hatalarında ve `DbUpdateException`/`DbUpdateConcurrencyException`'da (409) internal exception detayları client'a gönderilmez — sadece güvenli, genel bir mesaj döner; tam detay sunucu tarafında loglanır.
 
+> Not: Visual Studio ile hata ayıklarken (F5), iş kuralı ihlallerinde (ör. yetersiz stok) fırlatılan `DomainException`'lar için debugger "kullanıcı tarafından işlenmemiş özel durum" uyarısı gösterebilir. Bu bir çökme değildir — istisna zaten `GlobalExceptionHandler` tarafından merkezi olarak yakalanıp temiz bir `400` yanıtına çevrilir; "Devam Et" ile akışa devam edilebilir, dilerse Debug → Exception Settings üzerinden bu istisna türü için durma kapatılabilir.
+
 ## Rate Limiting
 
-Authentication endpoint'lerinde IP bazlı rate limiting bulunur (brute-force koruması). Limit aşımında `429 Too Many Requests` döner.
+Authentication endpoint'lerinde (`/api/Auth/*` — login, register, change-password, change-email dahil) IP bazlı rate limiting bulunur (brute-force koruması). Limit aşımında `429 Too Many Requests` döner.
 
 ## Security Headers
 
@@ -601,6 +712,8 @@ dotnet user-secrets set "Verification:HashKey" "YOUR_LONG_RANDOM_VERIFICATION_HA
 dotnet user-secrets set "Smtp:Username" "your-email@example.com"
 dotnet user-secrets set "Smtp:Password" "YOUR_SMTP_APP_PASSWORD"
 dotnet user-secrets set "Smtp:FromEmail" "your-email@example.com"
+dotnet user-secrets set "Admin:Email" "admin@minicrm.local"
+dotnet user-secrets set "Admin:Password" "YOUR_ADMIN_PASSWORD"
 ```
 
 Secret listesini kontrol etmek için:
@@ -645,7 +758,7 @@ Visual Studio'dan `WinFormUI` projesini başlangıç projesi olarak seçip çal�
 dotnet run --project WinFormUI
 ```
 
-> `WinFormUI`, `MiniCrm.Api`'nin çalışıyor olmasını bekler (varsayılan olarak `https://localhost:7048` adresine bağlanır). En sağlıklı deneyim için ikisini birlikte (Visual Studio'da "birden fazla başlangıç projesi" ayarıyla) çalıştırın.
+> `WinFormUI`, `MiniCrm.Api`'nin çalışıyor olmasını bekler (varsayılan olarak `https://localhost:7048` adresine bağlanır, bkz. `WinFormUI/ApiConfig.cs`). En sağlıklı deneyim için ikisini birlikte (Visual Studio'da "birden fazla başlangıç projesi" ayarıyla) çalıştırın.
 
 ---
 
@@ -664,7 +777,7 @@ Admin ve Customer endpoint'leri rol bazlı authorization ile birbirinden ayrılm
 
 | Grup | Route | Açıklama |
 |---|---|---|
-| Authentication | `/api/Auth` | register, login |
+| Authentication | `/api/Auth` | register, login, change-password, change-email |
 | Profile | `/api/Profile` | profil görüntüleme/güncelleme |
 | Addresses | `/api/Addresses` | adres CRUD, varsayılan adres |
 | Categories | `/api/Categories` | kategori CRUD (admin) + listeleme |
@@ -672,6 +785,7 @@ Admin ve Customer endpoint'leri rol bazlı authorization ile birbirinden ayrılm
 | Cart | `/api/Cart` | kalıcı müşteri sepeti |
 | Orders (Customer) | `/api/Orders` | checkout, verify, resend, list/detail, cancel |
 | Orders (Admin) | `/api/AdminOrders` | prepare, ship, deliver, cancel |
+| Leads (Admin) | `/api/Leads` | lead CRUD, durum değiştirme, not ekleme, müşteriye dönüştürme |
 | Support (Customer) | `/api/SupportConversations` | sohbet oluşturma, mesajlaşma |
 | Support (Admin) | `/api/AdminSupportConversations` | tüm sohbetler, yanıtlama, kapatma |
 | Admin Customers | `/api/AdminCustomers` | müşteri listesi |
@@ -680,7 +794,7 @@ Admin ve Customer endpoint'leri rol bazlı authorization ile birbirinden ayrılm
 
 # Test Durumu
 
-Sistem geliştirme sürecinde Swagger ve canlı API çağrılarıyla modül modül manuel olarak test edilmiştir. Kontrol edilen başlıca akışlar: register/login, JWT authorization, role kontrolü, category/product CRUD, stok hareketleri, cart, checkout, SMTP verification, order lifecycle (confirm/prepare/ship/deliver/cancel + restock), soft-delete zinciri (ürün/kategori silinince sepetten kaldırma), destek sohbeti akışı, 400/401/403/404/409/429 davranışları, health check, security headers.
+Sistem geliştirme sürecinde Swagger ve canlı API çağrılarıyla modül modül manuel olarak test edilmiştir. Kontrol edilen başlıca akışlar: register/login, JWT authorization, role kontrolü, category/product CRUD, stok hareketleri, cart, checkout (kayıtlı adresle), SMTP verification, order lifecycle (confirm/prepare/ship/deliver/cancel + restock), soft-delete zinciri (ürün/kategori silinince sepetten kaldırma), destek sohbeti akışı, **lead yaşam döngüsü** (oluşturma → not → durum değişimi → müşteriye dönüştürme, otomatik durum notu üretimi dahil), **şifre/e-posta değiştirme** (brute-force lockout dahil), adres defterinde varsayılan adres tekilliği, 400/401/403/404/409/429 davranışları, health check, security headers.
 
 ## Otomatik Test
 
@@ -700,9 +814,10 @@ tests
 - xUnit unit/integration testleri
 - GitHub Actions CI
 - pagination ve gelişmiş filtering/search
-- refresh token, email confirmation, forgot/reset password
+- refresh token, e-posta ile hesap onayı, e-posta linkiyle şifre sıfırlama (şifre/e-posta değiştirme zaten mevcut, ama "şifremi unuttum" akışı henüz yok)
+- lead'ler için web sitesinden gelen public/anonim bir capture formu (`POST /api/PublicLeads` gibi)
 - Redis cache
-- SignalR ile gerçek zamanlı destek mesajlaşması
+- **SignalR ile gerçek zamanlı destek mesajlaşması ve sipariş/lead bildirimleri**
 - Docker / Docker Compose / CI-CD
 - production deployment (gerçek SQL Server / Azure SQL)
 
@@ -710,4 +825,4 @@ tests
 
 # Sonuç
 
-MiniCrm; yalnızca müşteri CRUD işlemleri yapan basit bir CRM örneği değil, birbiriyle ilişkili iş akışlarını uçtan uca (backend + masaüstü istemci) yöneten katmanlı bir sistemdir. Kapsamında authentication/authorization, müşteri yönetimi, ürün/stok, sepet, sipariş, e-posta doğrulama, destek sohbeti, audit/soft-delete, merkezi exception handling ve rate limiting gibi backend geliştirmede kullanılan temel konseptler; WinForms masaüstü istemcisiyle birlikte tek bir çalışan sistem içerisinde uygulanmıştır.
+MiniCrm; yalnızca müşteri CRUD işlemleri yapan basit bir CRM örneği değil, satış öncesi lead takibinden satış sonrası desteğe kadar birbiriyle ilişkili iş akışlarını uçtan uca (backend + masaüstü istemci) yöneten katmanlı bir sistemdir. Kapsamında lead yönetimi, authentication/authorization (şifre/e-posta değiştirme dahil), müşteri yönetimi, adres defteri, ürün/stok, sepet, sipariş, e-posta doğrulama, destek sohbeti, audit/soft-delete, merkezi exception handling ve rate limiting gibi backend geliştirmede kullanılan temel konseptler; WinForms masaüstü istemcisiyle birlikte tek bir çalışan sistem içerisinde uygulanmıştır.
