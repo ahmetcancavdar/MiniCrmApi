@@ -10,8 +10,6 @@ namespace WinFormUI
 {
     public partial class Login : Form
     {
-        private const string ApiBaseUrl = "https://localhost:7048/api/Auth/login";
-
         private readonly Dictionary<Control, Rectangle> _originalBounds = new();
         private readonly Size _originalClientSize;
 
@@ -30,6 +28,15 @@ namespace WinFormUI
             }
 
             Resize += Login_Resize;
+
+            // Login her zaman navigasyon zincirinin en altındaki ekrandır: Admin/Customer/Kayıt
+            // ekranlarına geçerken sadece Hide() edilir (Application.Run bu formu takip ettiği
+            // için Close() edilirse uygulama tamamen kapanır). Kullanıcı, bu ekranı (orijinal ya
+            // da başka bir ekrandan "Çıkış Yap"/X sonrası yeniden açılan bir kopyasını) pencere
+            // X'ine basarak kapatırsa gidecek başka bir yer yoktur; uygulamanın görünürde
+            // kapanmış ama arka planda hayalet process olarak çalışmaya devam etmesini önlemek
+            // için burada açıkça çıkış yapılır.
+            FormClosed += (_, _) => Application.Exit();
         }
 
 
@@ -88,15 +95,22 @@ namespace WinFormUI
                 };
 
                 // HTTP İsteği Atıyoruz
-                using (var httpClient = new HttpClient())
+                using (var httpClient = new HttpClient { BaseAddress = new Uri(ApiConfig.BaseUrl) })
                 {
-                    var response = await httpClient.PostAsJsonAsync(ApiBaseUrl, loginModel);
+                    var response = await httpClient.PostAsJsonAsync("api/Auth/login", loginModel);
 
                     if (response.IsSuccessStatusCode)
                     {
                         var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
 
-                        if (result!.Roles.Contains("Admin"))
+                        if (result is null)
+                        {
+                            MessageBox.Show("Sunucudan beklenmeyen bir yanıt alındı.", "Giriş Başarısız",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+
+                        if (result.Roles.Contains("Admin"))
                         {
                             AdminPage adminPage = new AdminPage(result.Email, result.Token);
                             adminPage.Show();
@@ -142,9 +156,9 @@ namespace WinFormUI
     // ============================================================
     public class AuthResponseDto
     {
-        public string UserId { get; set; }
-        public string Email { get; set; }
+        public string UserId { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
         public List<string> Roles { get; set; } = new();
-        public string Token { get; set; }
+        public string Token { get; set; } = string.Empty;
     }
 }

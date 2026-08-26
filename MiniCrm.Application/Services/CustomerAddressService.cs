@@ -176,6 +176,32 @@ public sealed class CustomerAddressService
         address.Country =
             request.Country.Trim();
 
+        if (request.IsDefault &&
+            !address.IsDefault)
+        {
+            var otherAddresses =
+                await _addressRepository
+                    .GetByCustomerIdAsync(
+                        customer.Id,
+                        cancellationToken);
+
+            foreach (var otherAddress in otherAddresses
+                     .Where(x => x.Id != address.Id))
+            {
+                otherAddress.IsDefault =
+                    false;
+            }
+
+            address.IsDefault =
+                true;
+        }
+        else if (!request.IsDefault &&
+                 address.IsDefault)
+        {
+            address.IsDefault =
+                false;
+        }
+
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 

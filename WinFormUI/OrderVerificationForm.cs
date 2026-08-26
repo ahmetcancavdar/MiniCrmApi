@@ -7,8 +7,6 @@ namespace WinFormUI
 {
     public partial class OrderVerificationForm : Form
     {
-        private const string ApiBaseUrl = "https://localhost:7048/";
-
         private readonly int _orderId;
         private readonly HttpClient _httpClient;
 
@@ -20,7 +18,7 @@ namespace WinFormUI
 
             _orderId = orderId;
 
-            _httpClient = new HttpClient { BaseAddress = new Uri(ApiBaseUrl) };
+            _httpClient = new HttpClient { BaseAddress = new Uri(ApiConfig.BaseUrl) };
             _httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
 

@@ -92,4 +92,66 @@ public class AuthController : ControllerBase
             roles
         });
     }
+
+
+    // ============================================================
+    // CHANGE PASSWORD
+    // POST: /api/Auth/change-password
+    // ============================================================
+
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword(
+        [FromBody] ChangePasswordRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        await _authService.ChangePasswordAsync(
+            GetCurrentUserId(),
+            request,
+            cancellationToken);
+
+        return NoContent();
+    }
+
+
+    // ============================================================
+    // CHANGE EMAIL
+    // POST: /api/Auth/change-email
+    // ============================================================
+
+    [Authorize]
+    [HttpPost("change-email")]
+    public async Task<IActionResult> ChangeEmail(
+        [FromBody] ChangeEmailRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        await _authService.ChangeEmailAsync(
+            GetCurrentUserId(),
+            request,
+            cancellationToken);
+
+        return NoContent();
+    }
+
+
+    // ============================================================
+    // USER ID
+    // ============================================================
+
+    private Guid GetCurrentUserId()
+    {
+        var userIdValue =
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier);
+
+        if (!Guid.TryParse(
+                userIdValue,
+                out var userId))
+        {
+            throw new UnauthorizedAccessException(
+                "Invalid user identity.");
+        }
+
+        return userId;
+    }
 }

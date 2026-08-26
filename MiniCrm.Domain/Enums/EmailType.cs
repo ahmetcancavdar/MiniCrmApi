@@ -6,5 +6,6 @@ public enum EmailType
     OrderConfirmed = 2,
     OrderStatusChanged = 3,
     General = 4,
-    SupportMessage = 5
+    SupportMessage = 5,
+    LeadConverted = 6
 }

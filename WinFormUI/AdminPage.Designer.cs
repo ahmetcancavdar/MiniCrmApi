@@ -31,7 +31,7 @@ namespace WinFormUI
             label1 = new Label();
             button1 = new Button();
             Müşteriler = new TabPage();
-            MusterıDetaylbl = new Panel();
+            MusterilerSplitContainer = new SplitContainer();
             MusterıSıparıslerılabel = new Label();
             uyetarihilabel = new Label();
             label3 = new Label();
@@ -79,8 +79,23 @@ namespace WinFormUI
             konusmayıkapatButton = new Button();
             TalepLbl = new Label();
             dataGridView4 = new DataGridView();
+            Leadler = new TabPage();
+            dataGridView5 = new DataGridView();
+            panelLeadFilters = new Panel();
+            cmbLeadStatusFilter = new ComboBox();
+            cmbLeadSourceFilter = new ComboBox();
+            txtLeadSearch = new TextBox();
+            btnLeadFiltrele = new Button();
+            panelLeadButtons = new Panel();
+            btnLeadYeni = new Button();
+            btnLeadDuzenle = new Button();
+            btnLeadDetay = new Button();
+            btnLeadSil = new Button();
             Müşteriler.SuspendLayout();
-            MusterıDetaylbl.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)MusterilerSplitContainer).BeginInit();
+            MusterilerSplitContainer.Panel1.SuspendLayout();
+            MusterilerSplitContainer.Panel2.SuspendLayout();
+            MusterilerSplitContainer.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView3).BeginInit();
             ((System.ComponentModel.ISupportInitialize)dataGridView2).BeginInit();
             Siparişler.SuspendLayout();
@@ -93,6 +108,10 @@ namespace WinFormUI
             Destek.SuspendLayout();
             panelDestekDetay.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView4).BeginInit();
+            Leadler.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)dataGridView5).BeginInit();
+            panelLeadFilters.SuspendLayout();
+            panelLeadButtons.SuspendLayout();
             SuspendLayout();
             // 
             // label1
@@ -115,136 +134,147 @@ namespace WinFormUI
             button1.Text = "⚙";
             button1.UseVisualStyleBackColor = true;
             button1.Click += button1_Click;
-            // 
+            //
             // Müşteriler
-            // 
-            Müşteriler.Controls.Add(MusterıDetaylbl);
-            Müşteriler.Controls.Add(MusteriLabel);
-            Müşteriler.Controls.Add(dataGridView2);
+            //
+            Müşteriler.Controls.Add(MusterilerSplitContainer);
             Müşteriler.Location = new Point(4, 29);
             Müşteriler.Name = "Müşteriler";
             Müşteriler.Padding = new Padding(3);
             Müşteriler.Size = new Size(785, 411);
             Müşteriler.TabIndex = 3;
             Müşteriler.Text = "Müşteriler";
-            // 
-            // MusterıDetaylbl
-            // 
-            MusterıDetaylbl.Controls.Add(MusterıSıparıslerılabel);
-            MusterıDetaylbl.Controls.Add(uyetarihilabel);
-            MusterıDetaylbl.Controls.Add(label3);
-            MusterıDetaylbl.Controls.Add(telefonlabel);
-            MusterıDetaylbl.Controls.Add(epostalabel);
-            MusterıDetaylbl.Controls.Add(Ad);
-            MusterıDetaylbl.Controls.Add(label2);
-            MusterıDetaylbl.Controls.Add(dataGridView3);
-            MusterıDetaylbl.Dock = DockStyle.Right;
-            MusterıDetaylbl.Location = new Point(510, 3);
-            MusterıDetaylbl.Name = "MusterıDetaylbl";
-            MusterıDetaylbl.Size = new Size(272, 405);
-            MusterıDetaylbl.TabIndex = 3;
-            MusterıDetaylbl.Paint += MusterıDetaylbl_Paint;
-            // 
-            // MusterıSıparıslerılabel
-            // 
-            MusterıSıparıslerılabel.AutoSize = true;
-            MusterıSıparıslerılabel.Location = new Point(0, 197);
-            MusterıSıparıslerılabel.Name = "MusterıSıparıslerılabel";
-            MusterıSıparıslerılabel.Size = new Size(77, 20);
-            MusterıSıparıslerılabel.TabIndex = 7;
-            MusterıSıparıslerılabel.Text = "Siparişleri:";
-            // 
-            // uyetarihilabel
-            // 
-            uyetarihilabel.AutoSize = true;
-            uyetarihilabel.Location = new Point(6, 133);
-            uyetarihilabel.Name = "uyetarihilabel";
-            uyetarihilabel.Size = new Size(75, 20);
-            uyetarihilabel.TabIndex = 6;
-            uyetarihilabel.Text = "Üye tarihi:";
-            // 
-            // label3
-            // 
-            label3.AutoSize = true;
-            label3.Location = new Point(6, 113);
-            label3.Name = "label3";
-            label3.Size = new Size(49, 20);
-            label3.TabIndex = 5;
-            label3.Text = "Firma:";
-            // 
-            // telefonlabel
-            // 
-            telefonlabel.AutoSize = true;
-            telefonlabel.Location = new Point(6, 93);
-            telefonlabel.Name = "telefonlabel";
-            telefonlabel.Size = new Size(61, 20);
-            telefonlabel.TabIndex = 4;
-            telefonlabel.Text = "Telefon:";
-            // 
-            // epostalabel
-            // 
-            epostalabel.AutoSize = true;
-            epostalabel.Location = new Point(6, 73);
-            epostalabel.Name = "epostalabel";
-            epostalabel.Size = new Size(63, 20);
-            epostalabel.TabIndex = 3;
-            epostalabel.Text = "E-posta:";
-            // 
-            // Ad
-            // 
-            Ad.AutoSize = true;
-            Ad.Location = new Point(6, 53);
-            Ad.Name = "Ad";
-            Ad.Size = new Size(31, 20);
-            Ad.TabIndex = 2;
-            Ad.Text = "Ad:";
-            // 
-            // label2
-            // 
-            label2.AutoSize = true;
-            label2.Location = new Point(70, 20);
-            label2.Name = "label2";
-            label2.Size = new Size(105, 20);
-            label2.TabIndex = 1;
-            label2.Text = "Müşteri Detayı";
-            // 
-            // dataGridView3
-            // 
-            dataGridView3.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            dataGridView3.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridView3.Location = new Point(0, 220);
-            dataGridView3.MultiSelect = false;
-            dataGridView3.Name = "dataGridView3";
-            dataGridView3.ReadOnly = true;
-            dataGridView3.RowHeadersWidth = 51;
-            dataGridView3.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridView3.Size = new Size(272, 188);
-            dataGridView3.TabIndex = 0;
-            dataGridView3.CellContentClick += dataGridView3_CellContentClick;
-            // 
+            //
+            // MusterilerSplitContainer
+            //
+            MusterilerSplitContainer.Dock = DockStyle.Fill;
+            MusterilerSplitContainer.FixedPanel = FixedPanel.None;
+            MusterilerSplitContainer.Location = new Point(3, 3);
+            MusterilerSplitContainer.Name = "MusterilerSplitContainer";
+            MusterilerSplitContainer.Orientation = Orientation.Horizontal;
+            //
+            // MusterilerSplitContainer.Panel1
+            //
+            MusterilerSplitContainer.Panel1.Controls.Add(MusteriLabel);
+            MusterilerSplitContainer.Panel1.Controls.Add(dataGridView2);
+            MusterilerSplitContainer.Panel1MinSize = 120;
+            //
+            // MusterilerSplitContainer.Panel2
+            //
+            MusterilerSplitContainer.Panel2.Controls.Add(dataGridView3);
+            MusterilerSplitContainer.Panel2.Controls.Add(MusterıSıparıslerılabel);
+            MusterilerSplitContainer.Panel2.Controls.Add(uyetarihilabel);
+            MusterilerSplitContainer.Panel2.Controls.Add(label3);
+            MusterilerSplitContainer.Panel2.Controls.Add(telefonlabel);
+            MusterilerSplitContainer.Panel2.Controls.Add(epostalabel);
+            MusterilerSplitContainer.Panel2.Controls.Add(Ad);
+            MusterilerSplitContainer.Panel2.Controls.Add(label2);
+            MusterilerSplitContainer.Panel2MinSize = 150;
+            MusterilerSplitContainer.Size = new Size(779, 405);
+            MusterilerSplitContainer.SplitterDistance = 199;
+            MusterilerSplitContainer.SplitterWidth = 6;
+            MusterilerSplitContainer.TabIndex = 3;
+            //
             // MusteriLabel
-            // 
+            //
             MusteriLabel.AutoSize = true;
-            MusteriLabel.Location = new Point(0, 1);
+            MusteriLabel.Location = new Point(6, 6);
             MusteriLabel.Name = "MusteriLabel";
             MusteriLabel.Size = new Size(102, 20);
             MusteriLabel.TabIndex = 2;
             MusteriLabel.Text = "Müşteri Listesi";
             MusteriLabel.Click += MusteriLabel_Click;
-            // 
+            //
             // dataGridView2
-            // 
+            //
             dataGridView2.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             dataGridView2.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridView2.Location = new Point(0, 23);
+            dataGridView2.Location = new Point(6, 29);
             dataGridView2.MultiSelect = false;
             dataGridView2.Name = "dataGridView2";
             dataGridView2.ReadOnly = true;
             dataGridView2.RowHeadersWidth = 51;
             dataGridView2.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridView2.Size = new Size(511, 393);
+            dataGridView2.Size = new Size(767, 164);
             dataGridView2.TabIndex = 0;
             dataGridView2.SelectionChanged += dataGridView2_SelectionChanged;
+            //
+            // label2
+            //
+            label2.AutoSize = true;
+            label2.Location = new Point(6, 6);
+            label2.Name = "label2";
+            label2.Size = new Size(105, 20);
+            label2.TabIndex = 1;
+            label2.Text = "Müşteri Detayı";
+            //
+            // Ad
+            //
+            Ad.AutoSize = true;
+            Ad.Location = new Point(6, 34);
+            Ad.Name = "Ad";
+            Ad.Size = new Size(31, 20);
+            Ad.TabIndex = 2;
+            Ad.Text = "Ad:";
+            //
+            // epostalabel
+            //
+            epostalabel.AutoSize = true;
+            epostalabel.Location = new Point(6, 54);
+            epostalabel.Name = "epostalabel";
+            epostalabel.Size = new Size(63, 20);
+            epostalabel.TabIndex = 3;
+            epostalabel.Text = "E-posta:";
+            //
+            // telefonlabel
+            //
+            telefonlabel.AutoSize = true;
+            telefonlabel.Location = new Point(6, 74);
+            telefonlabel.Name = "telefonlabel";
+            telefonlabel.Size = new Size(61, 20);
+            telefonlabel.TabIndex = 4;
+            telefonlabel.Text = "Telefon:";
+            //
+            // label3
+            //
+            label3.AutoSize = true;
+            label3.Location = new Point(6, 94);
+            label3.Name = "label3";
+            label3.Size = new Size(49, 20);
+            label3.TabIndex = 5;
+            label3.Text = "Firma:";
+            //
+            // uyetarihilabel
+            //
+            uyetarihilabel.AutoSize = true;
+            uyetarihilabel.Location = new Point(6, 114);
+            uyetarihilabel.Name = "uyetarihilabel";
+            uyetarihilabel.Size = new Size(75, 20);
+            uyetarihilabel.TabIndex = 6;
+            uyetarihilabel.Text = "Üye tarihi:";
+            //
+            // MusterıSıparıslerılabel
+            //
+            MusterıSıparıslerılabel.AutoSize = true;
+            MusterıSıparıslerılabel.Location = new Point(6, 144);
+            MusterıSıparıslerılabel.Name = "MusterıSıparıslerılabel";
+            MusterıSıparıslerılabel.Size = new Size(77, 20);
+            MusterıSıparıslerılabel.TabIndex = 7;
+            MusterıSıparıslerılabel.Text = "Siparişleri:";
+            //
+            // dataGridView3
+            //
+            dataGridView3.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            dataGridView3.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dataGridView3.Location = new Point(6, 168);
+            dataGridView3.MultiSelect = false;
+            dataGridView3.Name = "dataGridView3";
+            dataGridView3.ReadOnly = true;
+            dataGridView3.RowHeadersWidth = 51;
+            dataGridView3.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dataGridView3.Size = new Size(767, 30);
+            dataGridView3.TabIndex = 0;
+            dataGridView3.CellContentClick += dataGridView3_CellContentClick;
             // 
             // Siparişler
             // 
@@ -382,6 +412,7 @@ namespace WinFormUI
             AdminPageControl.Controls.Add(Siparişler);
             AdminPageControl.Controls.Add(Müşteriler);
             AdminPageControl.Controls.Add(Destek);
+            AdminPageControl.Controls.Add(Leadler);
             AdminPageControl.Location = new Point(2, 37);
             AdminPageControl.Name = "AdminPageControl";
             AdminPageControl.SelectedIndex = 0;
@@ -656,9 +687,137 @@ namespace WinFormUI
             dataGridView4.Size = new Size(429, 385);
             dataGridView4.TabIndex = 1;
             dataGridView4.SelectionChanged += dataGridView4_SelectionChanged;
-            // 
+            //
+            // Leadler
+            //
+            Leadler.Controls.Add(dataGridView5);
+            Leadler.Controls.Add(panelLeadButtons);
+            Leadler.Controls.Add(panelLeadFilters);
+            Leadler.Location = new Point(4, 29);
+            Leadler.Name = "Leadler";
+            Leadler.Padding = new Padding(3);
+            Leadler.Size = new Size(785, 411);
+            Leadler.TabIndex = 5;
+            Leadler.Text = "Leadler";
+            Leadler.UseVisualStyleBackColor = true;
+            //
+            // dataGridView5
+            //
+            dataGridView5.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            dataGridView5.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dataGridView5.Location = new Point(6, 76);
+            dataGridView5.MultiSelect = false;
+            dataGridView5.Name = "dataGridView5";
+            dataGridView5.ReadOnly = true;
+            dataGridView5.RowHeadersWidth = 51;
+            dataGridView5.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dataGridView5.Size = new Size(744, 330);
+            dataGridView5.TabIndex = 2;
+            //
+            // panelLeadFilters
+            //
+            panelLeadFilters.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            panelLeadFilters.Controls.Add(cmbLeadStatusFilter);
+            panelLeadFilters.Controls.Add(cmbLeadSourceFilter);
+            panelLeadFilters.Controls.Add(txtLeadSearch);
+            panelLeadFilters.Controls.Add(btnLeadFiltrele);
+            panelLeadFilters.Location = new Point(6, 6);
+            panelLeadFilters.Name = "panelLeadFilters";
+            panelLeadFilters.Size = new Size(744, 30);
+            panelLeadFilters.TabIndex = 0;
+            //
+            // cmbLeadStatusFilter
+            //
+            cmbLeadStatusFilter.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbLeadStatusFilter.Location = new Point(0, 3);
+            cmbLeadStatusFilter.Name = "cmbLeadStatusFilter";
+            cmbLeadStatusFilter.Size = new Size(140, 28);
+            cmbLeadStatusFilter.TabIndex = 0;
+            cmbLeadStatusFilter.SelectedIndexChanged += LeadFiltre_Changed;
+            //
+            // cmbLeadSourceFilter
+            //
+            cmbLeadSourceFilter.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbLeadSourceFilter.Location = new Point(146, 3);
+            cmbLeadSourceFilter.Name = "cmbLeadSourceFilter";
+            cmbLeadSourceFilter.Size = new Size(140, 28);
+            cmbLeadSourceFilter.TabIndex = 1;
+            cmbLeadSourceFilter.SelectedIndexChanged += LeadFiltre_Changed;
+            //
+            // txtLeadSearch
+            //
+            txtLeadSearch.Location = new Point(292, 3);
+            txtLeadSearch.Name = "txtLeadSearch";
+            txtLeadSearch.PlaceholderText = "Ad, firma, e-posta veya telefon ara...";
+            txtLeadSearch.Size = new Size(280, 27);
+            txtLeadSearch.TabIndex = 2;
+            txtLeadSearch.TextChanged += LeadFiltre_Changed;
+            //
+            // btnLeadFiltrele
+            //
+            btnLeadFiltrele.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnLeadFiltrele.Location = new Point(644, 1);
+            btnLeadFiltrele.Name = "btnLeadFiltrele";
+            btnLeadFiltrele.Size = new Size(100, 29);
+            btnLeadFiltrele.TabIndex = 3;
+            btnLeadFiltrele.Text = "Temizle";
+            btnLeadFiltrele.UseVisualStyleBackColor = true;
+            btnLeadFiltrele.Click += btnLeadFiltrele_Click;
+            //
+            // panelLeadButtons
+            //
+            panelLeadButtons.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            panelLeadButtons.Controls.Add(btnLeadYeni);
+            panelLeadButtons.Controls.Add(btnLeadDuzenle);
+            panelLeadButtons.Controls.Add(btnLeadDetay);
+            panelLeadButtons.Controls.Add(btnLeadSil);
+            panelLeadButtons.Location = new Point(6, 41);
+            panelLeadButtons.Name = "panelLeadButtons";
+            panelLeadButtons.Size = new Size(744, 29);
+            panelLeadButtons.TabIndex = 1;
+            //
+            // btnLeadYeni
+            //
+            btnLeadYeni.Location = new Point(0, 0);
+            btnLeadYeni.Name = "btnLeadYeni";
+            btnLeadYeni.Size = new Size(106, 29);
+            btnLeadYeni.TabIndex = 0;
+            btnLeadYeni.Text = "Yeni Lead";
+            btnLeadYeni.UseVisualStyleBackColor = true;
+            btnLeadYeni.Click += btnLeadYeni_Click;
+            //
+            // btnLeadDuzenle
+            //
+            btnLeadDuzenle.Location = new Point(112, 0);
+            btnLeadDuzenle.Name = "btnLeadDuzenle";
+            btnLeadDuzenle.Size = new Size(106, 29);
+            btnLeadDuzenle.TabIndex = 1;
+            btnLeadDuzenle.Text = "Düzenle";
+            btnLeadDuzenle.UseVisualStyleBackColor = true;
+            btnLeadDuzenle.Click += btnLeadDuzenle_Click;
+            //
+            // btnLeadDetay
+            //
+            btnLeadDetay.Location = new Point(224, 0);
+            btnLeadDetay.Name = "btnLeadDetay";
+            btnLeadDetay.Size = new Size(106, 29);
+            btnLeadDetay.TabIndex = 2;
+            btnLeadDetay.Text = "Detay / Not";
+            btnLeadDetay.UseVisualStyleBackColor = true;
+            btnLeadDetay.Click += btnLeadDetay_Click;
+            //
+            // btnLeadSil
+            //
+            btnLeadSil.Location = new Point(336, 0);
+            btnLeadSil.Name = "btnLeadSil";
+            btnLeadSil.Size = new Size(94, 29);
+            btnLeadSil.TabIndex = 3;
+            btnLeadSil.Text = "Sil";
+            btnLeadSil.UseVisualStyleBackColor = true;
+            btnLeadSil.Click += btnLeadSil_Click;
+            //
             // AdminPage
-            // 
+            //
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ActiveCaption;
@@ -672,11 +831,14 @@ namespace WinFormUI
             Load += AdminPage_Load;
             Resize += AdminPage_Resize;
             Müşteriler.ResumeLayout(false);
-            Müşteriler.PerformLayout();
-            MusterıDetaylbl.ResumeLayout(false);
-            MusterıDetaylbl.PerformLayout();
+            MusterilerSplitContainer.Panel1.ResumeLayout(false);
+            MusterilerSplitContainer.Panel1.PerformLayout();
+            MusterilerSplitContainer.Panel2.ResumeLayout(false);
+            MusterilerSplitContainer.Panel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView3).EndInit();
             ((System.ComponentModel.ISupportInitialize)dataGridView2).EndInit();
+            ((System.ComponentModel.ISupportInitialize)MusterilerSplitContainer).EndInit();
+            MusterilerSplitContainer.ResumeLayout(false);
             Siparişler.ResumeLayout(false);
             Siparişler.PerformLayout();
             panel1.ResumeLayout(false);
@@ -691,6 +853,11 @@ namespace WinFormUI
             panelDestekDetay.ResumeLayout(false);
             panelDestekDetay.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView4).EndInit();
+            Leadler.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)dataGridView5).EndInit();
+            panelLeadFilters.ResumeLayout(false);
+            panelLeadFilters.PerformLayout();
+            panelLeadButtons.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -725,7 +892,7 @@ namespace WinFormUI
         private Button btnCancelOrder;
         private Label MusteriLabel;
         private DataGridView dataGridView2;
-        private Panel MusterıDetaylbl;
+        private SplitContainer MusterilerSplitContainer;
         private Label Ad;
         private Label label2;
         private DataGridView dataGridView3;
@@ -748,5 +915,17 @@ namespace WinFormUI
         private TextBox mesajTextBox;
         private Button yanitbutton;
         private Button konusmayıkapatButton;
+        private TabPage Leadler;
+        private DataGridView dataGridView5;
+        private Panel panelLeadFilters;
+        private ComboBox cmbLeadStatusFilter;
+        private ComboBox cmbLeadSourceFilter;
+        private TextBox txtLeadSearch;
+        private Button btnLeadFiltrele;
+        private Panel panelLeadButtons;
+        private Button btnLeadYeni;
+        private Button btnLeadDuzenle;
+        private Button btnLeadDetay;
+        private Button btnLeadSil;
     }
 }

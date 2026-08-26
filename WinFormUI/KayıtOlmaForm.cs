@@ -7,8 +7,6 @@ namespace WinFormUI
 {
     public partial class KayıtOlmaForm : Form
     {
-        private const string ApiBaseUrl = "https://localhost:7048/";
-
         private const string AdSoyadPlaceholder = "Ad Soyad giriniz...";
         private const string EmailPlaceholder = "Email giriniz...";
         private const string SifrePlaceholder = "Şifre giriniz...";
@@ -17,6 +15,7 @@ namespace WinFormUI
 
         private readonly Dictionary<Control, Rectangle> _originalBounds = new();
         private readonly Size _originalClientSize;
+        private bool _navigatedAway;
 
         public KayıtOlmaForm()
         {
@@ -24,6 +23,8 @@ namespace WinFormUI
 
             StartPosition = FormStartPosition.CenterScreen;
             MinimumSize = new Size(500, 350);
+
+            FormClosed += KayıtOlmaForm_FormClosed;
 
             AttachPlaceholder(textBox1, AdSoyadPlaceholder);
             AttachPlaceholder(textBox2, EmailPlaceholder);
@@ -158,7 +159,7 @@ namespace WinFormUI
 
             try
             {
-                using var httpClient = new HttpClient { BaseAddress = new Uri(ApiBaseUrl) };
+                using var httpClient = new HttpClient { BaseAddress = new Uri(ApiConfig.BaseUrl) };
 
                 var request = new
                 {
@@ -186,6 +187,8 @@ namespace WinFormUI
                     "Kayıt Ol",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
+
+                _navigatedAway = true;
 
                 var loginForm = new Login();
                 loginForm.Show();
@@ -243,6 +246,24 @@ namespace WinFormUI
         private void textBox2_TextChanged(object sender, EventArgs e)
         {
 
+        }
+
+
+        // ============================================================
+        // KAPATMA (X) -> LOGIN'E DÖN
+        // ============================================================
+
+        private void KayıtOlmaForm_FormClosed(object? sender, FormClosedEventArgs e)
+        {
+            // Kayıt başarılı olup zaten Login'e yönlendirdiysek (veya ileride
+            // başka bir yere yönlendirilirse) tekrar bir Login penceresi
+            // açmamak için bu bayrak kontrol edilir.
+            if (_navigatedAway)
+            {
+                return;
+            }
+
+            new Login().Show();
         }
     }
 }

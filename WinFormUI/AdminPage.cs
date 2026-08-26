@@ -7,14 +7,38 @@ namespace WinFormUI
 {
     public partial class AdminPage : Form
     {
-        private const string ApiBaseUrl = "https://localhost:7048/";
-
         private readonly string _adminEmail;
         private readonly string _token;
         private readonly HttpClient _httpClient;
 
         private List<OrderDto> _allOrders = new();
+        private List<LeadDto> _allLeads = new();
 
+        private static readonly ComboOption<string>[] LeadStatusFilterOptions =
+        {
+            new("(Tümü)", ""),
+            new("Yeni", "New"),
+            new("İletişime Geçildi", "Contacted"),
+            new("Değerlendirildi", "Qualified"),
+            new("Teklif Gönderildi", "ProposalSent"),
+            new("Dönüştürüldü", "Converted"),
+            new("Kaybedildi", "Lost")
+        };
+
+        private static readonly ComboOption<string>[] LeadSourceFilterOptions =
+        {
+            new("(Tümü)", ""),
+            new("Web Sitesi", "Website"),
+            new("Telefon", "PhoneCall"),
+            new("E-posta", "Email"),
+            new("Sosyal Medya", "SocialMedia"),
+            new("Fuar", "Fair"),
+            new("Referans", "Reference"),
+            new("Diğer", "Other")
+        };
+
+
+        private bool _navigatedAway;
 
         public AdminPage(string email, string token)
         {
@@ -22,32 +46,42 @@ namespace WinFormUI
             _adminEmail = email;
             _token = token;
 
-            _httpClient = new HttpClient { BaseAddress = new Uri(ApiBaseUrl) };
+            _httpClient = new HttpClient { BaseAddress = new Uri(ApiConfig.BaseUrl) };
             _httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", _token);
+
+            FormClosed += AdminPage_FormClosed;
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            var mesaj =
-                $"Hesap Bilgileri\n\n" +
-                $"E-Posta : {_adminEmail}\n" +
-                $"Rol     : Admin\n\n" +
-                $"Çıkış yapmak istiyor musunuz?";
+            using var accountForm = new AccountForm(_httpClient, _adminEmail, "Admin", isCustomer: false);
 
-            var cevap = MessageBox.Show(
-                mesaj,
-                "Hesap Bilgileri",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question,
-                MessageBoxDefaultButton.Button2);
+            accountForm.ShowDialog(this);
 
-            if (cevap == DialogResult.Yes)
+            if (accountForm.LoggedOut)
             {
+                _navigatedAway = true;
+
                 Login loginForm = new Login();
                 loginForm.Show();
                 this.Close();
             }
+        }
+
+
+        // ============================================================
+        // KAPATMA (X) -> LOGIN'E DÖN
+        // ============================================================
+
+        private void AdminPage_FormClosed(object? sender, FormClosedEventArgs e)
+        {
+            if (_navigatedAway)
+            {
+                return;
+            }
+
+            new Login().Show();
         }
 
         private void tabPage1_Click(object sender, EventArgs e)
@@ -75,10 +109,22 @@ namespace WinFormUI
             dataGridView4.AutoGenerateColumns = true;
             dataGridView4.AllowUserToAddRows = false;
 
+            cmbLeadStatusFilter.DataSource = LeadStatusFilterOptions;
+            cmbLeadStatusFilter.DisplayMember = "Label";
+            cmbLeadStatusFilter.ValueMember = "Value";
+
+            cmbLeadSourceFilter.DataSource = LeadSourceFilterOptions;
+            cmbLeadSourceFilter.DisplayMember = "Label";
+            cmbLeadSourceFilter.ValueMember = "Value";
+
+            dataGridView5.AutoGenerateColumns = true;
+            dataGridView5.AllowUserToAddRows = false;
+
             await LoadProductsAsync();
             await LoadOrdersAsync();
             await LoadCustomersAsync();
             await LoadSupportConversationsAsync();
+            await LoadLeadsAsync();
 
             AdminPage_Resize(this, EventArgs.Empty);
         }
@@ -95,15 +141,39 @@ namespace WinFormUI
                 panel1.Width = Math.Max(180, (int)(Siparişler.Width * 0.28));
             }
 
-            if (Müşteriler.Width > 0)
-            {
-                MusterıDetaylbl.Width = Math.Max(200, (int)(Müşteriler.Width * 0.30));
-            }
-
             if (Destek.Width > 0)
             {
                 panelDestekDetay.Width = Math.Max(300, (int)(Destek.Width * 0.50));
             }
+
+            AdjustCustomerSplitter();
+        }
+
+        // Müşteriler sekmesini üst (liste) ve alt (detay) olarak tam ortadan
+        // böler; pencere her büyüyüp küçüldüğünde bu oran korunur
+        // (SplitContainer'ın SplitterDistance'ı piksel cinsinden sabit bir
+        // değerdir, bu yüzden CustomerPage'deki destek sekmesi bölücüsüyle
+        // aynı mantıkla burada da yeniden hesaplanması gerekiyor).
+        private void AdjustCustomerSplitter()
+        {
+            if (MusterilerSplitContainer.Height <= 0)
+            {
+                return;
+            }
+
+            var desiredTopHeight =
+                (int)(MusterilerSplitContainer.Height * 0.5);
+
+            var minTop = MusterilerSplitContainer.Panel1MinSize;
+            var maxTop = MusterilerSplitContainer.Height - MusterilerSplitContainer.Panel2MinSize - MusterilerSplitContainer.SplitterWidth;
+
+            if (maxTop <= minTop)
+            {
+                return;
+            }
+
+            MusterilerSplitContainer.SplitterDistance =
+                Math.Max(minTop, Math.Min(desiredTopHeight, maxTop));
         }
 
 
@@ -380,6 +450,336 @@ namespace WinFormUI
             }
 
             return await response.Content.ReadFromJsonAsync<List<CategoryDto>>() ?? new List<CategoryDto>();
+        }
+
+
+        // ============================================================
+        // LEAD'LERİ YÜKLE
+        // ============================================================
+
+        private async Task LoadLeadsAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/Leads");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    MessageBox.Show(
+                        await ReadErrorMessageAsync(response),
+                        "Leadler Yüklenemedi",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    return;
+                }
+
+                _allLeads =
+                    await response.Content.ReadFromJsonAsync<List<LeadDto>>()
+                    ?? new List<LeadDto>();
+
+                ApplyLeadFilters();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Sunucuya bağlanırken bir hata oluştu:\n{ex.Message}\n\nLütfen MiniCrm.Api projesinin çalıştığından emin olun!",
+                    "Bağlantı Hatası",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
+        private void ApplyLeadFilters()
+        {
+            IEnumerable<LeadDto> filtered = _allLeads;
+
+            if (cmbLeadStatusFilter.SelectedValue is string statusValue && !string.IsNullOrEmpty(statusValue))
+            {
+                filtered = filtered.Where(x => x.Status == statusValue);
+            }
+
+            if (cmbLeadSourceFilter.SelectedValue is string sourceValue && !string.IsNullOrEmpty(sourceValue))
+            {
+                filtered = filtered.Where(x => x.Source == sourceValue);
+            }
+
+            var search = txtLeadSearch.Text.Trim();
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                filtered = filtered.Where(x =>
+                    (x.FullName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (x.CompanyName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (x.Email?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (x.Phone?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            dataGridView5.DataSource = filtered.ToList();
+            ConfigureLeadGridColumns();
+        }
+
+        private void ConfigureLeadGridColumns()
+        {
+            HideLeadColumn("Notes");
+
+            RenameLeadColumn("Id", "ID");
+            RenameLeadColumn("FullName", "Ad Soyad");
+            RenameLeadColumn("CompanyName", "Firma");
+            RenameLeadColumn("Email", "E-posta");
+            RenameLeadColumn("Phone", "Telefon");
+            RenameLeadColumn("Source", "Kaynak");
+            RenameLeadColumn("Status", "Durum");
+            RenameLeadColumn("InterestArea", "İlgi Alanı");
+            RenameLeadColumn("NextFollowUpDate", "Takip Tarihi");
+            RenameLeadColumn("ConvertedCustomerId", "Müşteri ID");
+            RenameLeadColumn("CreatedAtUtc", "Oluşturulma");
+
+            dataGridView5.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+        }
+
+        private void HideLeadColumn(string columnName)
+        {
+            if (dataGridView5.Columns[columnName] is { } column)
+            {
+                column.Visible = false;
+            }
+        }
+
+        private void RenameLeadColumn(string columnName, string headerText)
+        {
+            if (dataGridView5.Columns[columnName] is { } column)
+            {
+                column.HeaderText = headerText;
+            }
+        }
+
+        private LeadDto? GetSelectedLead()
+        {
+            return dataGridView5.CurrentRow?.DataBoundItem as LeadDto;
+        }
+
+        private void LeadFiltre_Changed(object sender, EventArgs e)
+        {
+            ApplyLeadFilters();
+        }
+
+        private void btnLeadFiltrele_Click(object sender, EventArgs e)
+        {
+            cmbLeadStatusFilter.SelectedIndex = 0;
+            cmbLeadSourceFilter.SelectedIndex = 0;
+            txtLeadSearch.Clear();
+            ApplyLeadFilters();
+        }
+
+
+        // ============================================================
+        // LEAD EKLE
+        // ============================================================
+
+        private async void btnLeadYeni_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using var form = new LeadEditForm();
+
+                if (form.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                var request = new CreateLeadRequestDto
+                {
+                    FullName = form.FullNameValue,
+                    CompanyName = form.CompanyNameValue,
+                    Email = form.EmailValue,
+                    Phone = form.PhoneValue,
+                    Source = form.SourceValue,
+                    InterestArea = form.InterestAreaValue,
+                    Notes = form.NotesValue,
+                    NextFollowUpDate = form.NextFollowUpDateValue
+                };
+
+                var response = await _httpClient.PostAsJsonAsync("api/Leads", request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    MessageBox.Show(
+                        await ReadErrorMessageAsync(response),
+                        "Lead Eklenemedi",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    return;
+                }
+
+                await LoadLeadsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Bir hata oluştu:\n{ex.Message}",
+                    "Hata",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
+
+        // ============================================================
+        // LEAD DÜZENLE
+        // ============================================================
+
+        private async void btnLeadDuzenle_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var selected = GetSelectedLead();
+
+                if (selected is null)
+                {
+                    MessageBox.Show(
+                        "Düzenlemek için bir lead seçin.",
+                        "Lead Seçilmedi",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (selected.Status == "Converted")
+                {
+                    MessageBox.Show(
+                        "Dönüştürülmüş bir lead düzenlenemez.",
+                        "İşlem Yapılamaz",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                using var form = new LeadEditForm(selected);
+
+                if (form.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                var request = new UpdateLeadRequestDto
+                {
+                    FullName = form.FullNameValue,
+                    CompanyName = form.CompanyNameValue,
+                    Email = form.EmailValue,
+                    Phone = form.PhoneValue,
+                    Source = form.SourceValue,
+                    InterestArea = form.InterestAreaValue,
+                    Notes = form.NotesValue,
+                    NextFollowUpDate = form.NextFollowUpDateValue
+                };
+
+                var response = await _httpClient.PutAsJsonAsync($"api/Leads/{selected.Id}", request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    MessageBox.Show(
+                        await ReadErrorMessageAsync(response),
+                        "Lead Güncellenemedi",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    return;
+                }
+
+                await LoadLeadsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Bir hata oluştu:\n{ex.Message}",
+                    "Hata",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
+
+        // ============================================================
+        // LEAD DETAY / NOT / DURUM / DÖNÜŞTÜR
+        // ============================================================
+
+        private async void btnLeadDetay_Click(object sender, EventArgs e)
+        {
+            var selected = GetSelectedLead();
+
+            if (selected is null)
+            {
+                MessageBox.Show(
+                    "Detayını görmek için bir lead seçin.",
+                    "Lead Seçilmedi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            using var form = new LeadDetailForm(_httpClient, selected.Id);
+
+            form.ShowDialog(this);
+
+            if (form.ChangesMade)
+            {
+                await LoadLeadsAsync();
+            }
+        }
+
+
+        // ============================================================
+        // LEAD SİL
+        // ============================================================
+
+        private async void btnLeadSil_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var selected = GetSelectedLead();
+
+                if (selected is null)
+                {
+                    MessageBox.Show(
+                        "Silmek için bir lead seçin.",
+                        "Lead Seçilmedi",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var confirm = MessageBox.Show(
+                    $"'{selected.FullName}' adlı lead silinsin mi?",
+                    "Lead Sil",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (confirm != DialogResult.Yes)
+                {
+                    return;
+                }
+
+                var response = await _httpClient.DeleteAsync($"api/Leads/{selected.Id}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    MessageBox.Show(
+                        await ReadErrorMessageAsync(response),
+                        "Lead Silinemedi",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    return;
+                }
+
+                await LoadLeadsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Bir hata oluştu:\n{ex.Message}",
+                    "Hata",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
 
         private void ConfigureProductGridColumns()
@@ -873,11 +1273,6 @@ namespace WinFormUI
         }
 
         private void MusteriLabel_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void MusterıDetaylbl_Paint(object sender, PaintEventArgs e)
         {
 
         }
@@ -1498,5 +1893,73 @@ namespace WinFormUI
     public class AddSupportMessageRequestDto
     {
         public string Message { get; set; } = string.Empty;
+    }
+
+    public class LeadDto
+    {
+        public int Id { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string? CompanyName { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string Source { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string? InterestArea { get; set; }
+        public string? Notes { get; set; }
+        public DateTime? NextFollowUpDate { get; set; }
+        public int? ConvertedCustomerId { get; set; }
+        public DateTime CreatedAtUtc { get; set; }
+    }
+
+    public class LeadNoteDto
+    {
+        public int Id { get; set; }
+        public Guid AdminUserId { get; set; }
+        public string Note { get; set; } = string.Empty;
+        public DateTime CreatedAtUtc { get; set; }
+    }
+
+    public class LeadDetailDto : LeadDto
+    {
+        public List<LeadNoteDto> LeadNotes { get; set; } = new();
+    }
+
+    public class CreateLeadRequestDto
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string? CompanyName { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public int Source { get; set; }
+        public string? InterestArea { get; set; }
+        public string? Notes { get; set; }
+        public DateTime? NextFollowUpDate { get; set; }
+    }
+
+    public class UpdateLeadRequestDto
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string? CompanyName { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public int Source { get; set; }
+        public string? InterestArea { get; set; }
+        public string? Notes { get; set; }
+        public DateTime? NextFollowUpDate { get; set; }
+    }
+
+    public class AddLeadNoteRequestDto
+    {
+        public string Note { get; set; } = string.Empty;
+    }
+
+    public class UpdateLeadStatusRequestDto
+    {
+        public int Status { get; set; }
+        public string? Reason { get; set; }
+    }
+
+    public class ConvertLeadRequestDto
+    {
     }
 }

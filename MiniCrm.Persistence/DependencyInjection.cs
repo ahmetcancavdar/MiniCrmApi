@@ -118,6 +118,10 @@ public static class DependencyInjection
             IEmailLogRepository,
             EmailLogRepository>();
 
+        services.AddScoped<
+            ILeadRepository,
+            LeadRepository>();
+
 
         // ============================================================
         // SERVICES
@@ -158,6 +162,10 @@ public static class DependencyInjection
         services.AddScoped<
             ISupportConversationService,
             SupportConversationService>();
+
+        services.AddScoped<
+            ILeadService,
+            LeadService>();
 
         return services;
     }

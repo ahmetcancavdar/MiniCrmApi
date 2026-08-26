@@ -31,4 +31,6 @@ public class UpdateAddressRequestDto
     [MaxLength(100)]
     public string Country { get; set; } =
         string.Empty;
+
+    public bool IsDefault { get; set; }
 }

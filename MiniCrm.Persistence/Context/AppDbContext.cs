@@ -59,6 +59,12 @@ public class AppDbContext
     public DbSet<EmailLog> EmailLogs =>
         Set<EmailLog>();
 
+    public DbSet<Lead> Leads =>
+        Set<Lead>();
+
+    public DbSet<LeadNote> LeadNotes =>
+        Set<LeadNote>();
+
     protected override void OnModelCreating(
         ModelBuilder builder)
     {

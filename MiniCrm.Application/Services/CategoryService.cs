@@ -130,7 +130,7 @@ public sealed class CategoryService : ICategoryService
             // alınamaz hale gelir (Product.IsPurchasable); müşterilerin
             // sepetinden de aktif olarak kaldırılmaları gerekir, aksi
             // halde ürün silinince/pasife alınınca yaptığımız gibi
-            // sepette görünmeye devam ederdi.
+            // sepette görünmeye devam ederdi. 
             await RemoveCategoryProductsFromAllCartsAsync(
                 category.Id,
                 cancellationToken);

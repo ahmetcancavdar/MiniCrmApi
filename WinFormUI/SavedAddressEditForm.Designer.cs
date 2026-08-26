@@ -1,16 +1,9 @@
 namespace WinFormUI
 {
-    partial class AddressForm
+    partial class SavedAddressEditForm
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -22,16 +15,10 @@ namespace WinFormUI
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
-            lblRecipientName = new Label();
-            txtRecipientName = new TextBox();
-            lblPhone = new Label();
-            txtPhone = new TextBox();
+            lblTitle = new Label();
+            txtTitle = new TextBox();
             lblAddressLine = new Label();
             txtAddressLine = new TextBox();
             lblCity = new Label();
@@ -42,124 +29,120 @@ namespace WinFormUI
             txtPostalCode = new TextBox();
             lblCountry = new Label();
             txtCountry = new TextBox();
+            chkIsDefault = new CheckBox();
             panelButtons = new FlowLayoutPanel();
             btnCancel = new Button();
             btnSave = new Button();
             panelButtons.SuspendLayout();
             SuspendLayout();
             //
-            // lblRecipientName
+            // lblTitle
             //
-            lblRecipientName.AutoSize = true;
-            lblRecipientName.Location = new Point(12, 15);
-            lblRecipientName.Name = "lblRecipientName";
-            lblRecipientName.Size = new Size(70, 20);
-            lblRecipientName.TabIndex = 0;
-            lblRecipientName.Text = "Alıcı Adı";
+            lblTitle.AutoSize = true;
+            lblTitle.Location = new Point(12, 15);
+            lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(58, 20);
+            lblTitle.TabIndex = 0;
+            lblTitle.Text = "Başlık";
             //
-            // txtRecipientName
+            // txtTitle
             //
-            txtRecipientName.Location = new Point(120, 12);
-            txtRecipientName.Name = "txtRecipientName";
-            txtRecipientName.Size = new Size(220, 27);
-            txtRecipientName.TabIndex = 1;
-            //
-            // lblPhone
-            //
-            lblPhone.AutoSize = true;
-            lblPhone.Location = new Point(12, 45);
-            lblPhone.Name = "lblPhone";
-            lblPhone.Size = new Size(56, 20);
-            lblPhone.TabIndex = 2;
-            lblPhone.Text = "Telefon";
-            //
-            // txtPhone
-            //
-            txtPhone.Location = new Point(120, 42);
-            txtPhone.Name = "txtPhone";
-            txtPhone.Size = new Size(220, 27);
-            txtPhone.TabIndex = 3;
+            txtTitle.Location = new Point(120, 12);
+            txtTitle.Name = "txtTitle";
+            txtTitle.PlaceholderText = "Ev, İş, ...";
+            txtTitle.Size = new Size(220, 27);
+            txtTitle.TabIndex = 1;
             //
             // lblAddressLine
             //
             lblAddressLine.AutoSize = true;
-            lblAddressLine.Location = new Point(12, 75);
+            lblAddressLine.Location = new Point(12, 45);
             lblAddressLine.Name = "lblAddressLine";
             lblAddressLine.Size = new Size(45, 20);
-            lblAddressLine.TabIndex = 4;
+            lblAddressLine.TabIndex = 2;
             lblAddressLine.Text = "Adres";
             //
             // txtAddressLine
             //
-            txtAddressLine.Location = new Point(120, 72);
+            txtAddressLine.Location = new Point(120, 42);
             txtAddressLine.Multiline = true;
             txtAddressLine.Name = "txtAddressLine";
             txtAddressLine.Size = new Size(220, 60);
-            txtAddressLine.TabIndex = 5;
+            txtAddressLine.TabIndex = 3;
             //
             // lblCity
             //
             lblCity.AutoSize = true;
-            lblCity.Location = new Point(12, 145);
+            lblCity.Location = new Point(12, 115);
             lblCity.Name = "lblCity";
             lblCity.Size = new Size(48, 20);
-            lblCity.TabIndex = 6;
+            lblCity.TabIndex = 4;
             lblCity.Text = "Şehir";
             //
             // txtCity
             //
-            txtCity.Location = new Point(120, 142);
+            txtCity.Location = new Point(120, 112);
             txtCity.Name = "txtCity";
             txtCity.Size = new Size(220, 27);
-            txtCity.TabIndex = 7;
+            txtCity.TabIndex = 5;
             //
             // lblDistrict
             //
             lblDistrict.AutoSize = true;
-            lblDistrict.Location = new Point(12, 175);
+            lblDistrict.Location = new Point(12, 145);
             lblDistrict.Name = "lblDistrict";
             lblDistrict.Size = new Size(37, 20);
-            lblDistrict.TabIndex = 8;
+            lblDistrict.TabIndex = 6;
             lblDistrict.Text = "İlçe";
             //
             // txtDistrict
             //
-            txtDistrict.Location = new Point(120, 172);
+            txtDistrict.Location = new Point(120, 142);
             txtDistrict.Name = "txtDistrict";
             txtDistrict.Size = new Size(220, 27);
-            txtDistrict.TabIndex = 9;
+            txtDistrict.TabIndex = 7;
             //
             // lblPostalCode
             //
             lblPostalCode.AutoSize = true;
-            lblPostalCode.Location = new Point(12, 205);
+            lblPostalCode.Location = new Point(12, 175);
             lblPostalCode.Name = "lblPostalCode";
             lblPostalCode.Size = new Size(83, 20);
-            lblPostalCode.TabIndex = 10;
+            lblPostalCode.TabIndex = 8;
             lblPostalCode.Text = "Posta Kodu";
             //
             // txtPostalCode
             //
-            txtPostalCode.Location = new Point(120, 202);
+            txtPostalCode.Location = new Point(120, 172);
             txtPostalCode.Name = "txtPostalCode";
             txtPostalCode.Size = new Size(220, 27);
-            txtPostalCode.TabIndex = 11;
+            txtPostalCode.TabIndex = 9;
             //
             // lblCountry
             //
             lblCountry.AutoSize = true;
-            lblCountry.Location = new Point(12, 235);
+            lblCountry.Location = new Point(12, 205);
             lblCountry.Name = "lblCountry";
             lblCountry.Size = new Size(42, 20);
-            lblCountry.TabIndex = 12;
+            lblCountry.TabIndex = 10;
             lblCountry.Text = "Ülke";
             //
             // txtCountry
             //
-            txtCountry.Location = new Point(120, 232);
+            txtCountry.Location = new Point(120, 202);
             txtCountry.Name = "txtCountry";
             txtCountry.Size = new Size(220, 27);
-            txtCountry.TabIndex = 13;
+            txtCountry.TabIndex = 11;
+            //
+            // chkIsDefault
+            //
+            chkIsDefault.AutoSize = true;
+            chkIsDefault.Location = new Point(120, 235);
+            chkIsDefault.Name = "chkIsDefault";
+            chkIsDefault.Size = new Size(150, 24);
+            chkIsDefault.TabIndex = 12;
+            chkIsDefault.Text = "Varsayılan Adres";
+            chkIsDefault.UseVisualStyleBackColor = true;
             //
             // panelButtons
             //
@@ -171,7 +154,7 @@ namespace WinFormUI
             panelButtons.Name = "panelButtons";
             panelButtons.Padding = new Padding(12);
             panelButtons.Size = new Size(360, 45);
-            panelButtons.TabIndex = 14;
+            panelButtons.TabIndex = 13;
             //
             // btnCancel
             //
@@ -190,19 +173,17 @@ namespace WinFormUI
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(90, 29);
             btnSave.TabIndex = 0;
-            btnSave.Text = "Devam Et";
+            btnSave.Text = "Kaydet";
             btnSave.UseVisualStyleBackColor = true;
             btnSave.Click += btnSave_Click;
             //
-            // AddressForm
+            // SavedAddressEditForm
             //
             AcceptButton = btnSave;
             CancelButton = btnCancel;
             ClientSize = new Size(360, 320);
-            Controls.Add(lblRecipientName);
-            Controls.Add(txtRecipientName);
-            Controls.Add(lblPhone);
-            Controls.Add(txtPhone);
+            Controls.Add(lblTitle);
+            Controls.Add(txtTitle);
             Controls.Add(lblAddressLine);
             Controls.Add(txtAddressLine);
             Controls.Add(lblCity);
@@ -213,13 +194,14 @@ namespace WinFormUI
             Controls.Add(txtPostalCode);
             Controls.Add(lblCountry);
             Controls.Add(txtCountry);
+            Controls.Add(chkIsDefault);
             Controls.Add(panelButtons);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
-            Name = "AddressForm";
+            Name = "SavedAddressEditForm";
             StartPosition = FormStartPosition.CenterParent;
-            Text = "Teslimat Adresi";
+            Text = "Yeni Adres";
             panelButtons.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
@@ -227,10 +209,8 @@ namespace WinFormUI
 
         #endregion
 
-        private Label lblRecipientName;
-        private TextBox txtRecipientName;
-        private Label lblPhone;
-        private TextBox txtPhone;
+        private Label lblTitle;
+        private TextBox txtTitle;
         private Label lblAddressLine;
         private TextBox txtAddressLine;
         private Label lblCity;
@@ -241,6 +221,7 @@ namespace WinFormUI
         private TextBox txtPostalCode;
         private Label lblCountry;
         private TextBox txtCountry;
+        private CheckBox chkIsDefault;
         private FlowLayoutPanel panelButtons;
         private Button btnSave;
         private Button btnCancel;

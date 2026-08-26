@@ -10,8 +10,6 @@ namespace WinFormUI
 {
     public partial class CustomerPage : Form
     {
-        private const string ApiBaseUrl = "https://localhost:7048/";
-
         private readonly string _customerEmail;
         private readonly string _token;
         private readonly HttpClient _httpClient;
@@ -27,11 +25,30 @@ namespace WinFormUI
             _customerEmail = email;
             _token = token;
 
-            _httpClient = new HttpClient { BaseAddress = new Uri(ApiBaseUrl) };
+            _httpClient = new HttpClient { BaseAddress = new Uri(ApiConfig.BaseUrl) };
             _httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", _token);
 
+            FormClosed += CustomerPage_FormClosed;
+
             CenterTitleLabel();
+        }
+
+        private bool _navigatedAway;
+
+
+        // ============================================================
+        // KAPATMA (X) -> LOGIN'E DÖN
+        // ============================================================
+
+        private void CustomerPage_FormClosed(object? sender, FormClosedEventArgs e)
+        {
+            if (_navigatedAway)
+            {
+                return;
+            }
+
+            new Login().Show();
         }
 
         private void label1_Click(object sender, EventArgs e)
@@ -97,21 +114,14 @@ namespace WinFormUI
 
         private void button2_Click(object sender, EventArgs e)
         {
-            var mesaj =
-                $"Hesap Bilgileri\n\n" +
-                $"E-Posta : {_customerEmail}\n" +
-                $"Rol     : Müşteri\n\n" +
-                $"Çıkış yapmak istiyor musunuz?";
+            using var accountForm = new AccountForm(_httpClient, _customerEmail, "Müşteri", isCustomer: true);
 
-            var cevap = MessageBox.Show(
-                mesaj,
-                "Hesap Bilgileri",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question,
-                MessageBoxDefaultButton.Button2);
+            accountForm.ShowDialog(this);
 
-            if (cevap == DialogResult.Yes)
+            if (accountForm.LoggedOut)
             {
+                _navigatedAway = true;
+
                 Login loginForm = new Login();
                 loginForm.Show();
                 this.Close();
@@ -536,9 +546,9 @@ namespace WinFormUI
                 return;
             }
 
-            using var addressForm = new AddressForm();
+            using var addressPicker = new AddressPickerForm(_httpClient);
 
-            if (addressForm.ShowDialog(this) != DialogResult.OK)
+            if (addressPicker.ShowDialog(this) != DialogResult.OK)
             {
                 return;
             }
@@ -550,13 +560,13 @@ namespace WinFormUI
             {
                 var request = new CheckoutOrderRequestDto
                 {
-                    RecipientName = addressForm.RecipientName,
-                    Phone = addressForm.Phone,
-                    AddressLine = addressForm.AddressLine,
-                    City = addressForm.City,
-                    District = addressForm.District,
-                    PostalCode = addressForm.PostalCode,
-                    Country = addressForm.Country
+                    RecipientName = addressPicker.RecipientName,
+                    Phone = addressPicker.Phone,
+                    AddressLine = addressPicker.AddressLine,
+                    City = addressPicker.City,
+                    District = addressPicker.District,
+                    PostalCode = addressPicker.PostalCode,
+                    Country = addressPicker.Country
                 };
 
                 var response = await _httpClient.PostAsJsonAsync("api/Orders/checkout", request);
@@ -1439,5 +1449,70 @@ namespace WinFormUI
         public string Status { get; set; } = string.Empty;
         public decimal TotalAmount { get; set; }
         public List<OrderItemResponseDto> Items { get; set; } = new();
+    }
+
+    public class AddressDto
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string AddressLine { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string District { get; set; } = string.Empty;
+        public string? PostalCode { get; set; }
+        public string Country { get; set; } = string.Empty;
+        public bool IsDefault { get; set; }
+        public DateTime CreatedAtUtc { get; set; }
+    }
+
+    public class CreateAddressRequestDto
+    {
+        public string Title { get; set; } = string.Empty;
+        public string AddressLine { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string District { get; set; } = string.Empty;
+        public string? PostalCode { get; set; }
+        public string Country { get; set; } = string.Empty;
+        public bool IsDefault { get; set; }
+    }
+
+    public class UpdateAddressRequestDto
+    {
+        public string Title { get; set; } = string.Empty;
+        public string AddressLine { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string District { get; set; } = string.Empty;
+        public string? PostalCode { get; set; }
+        public string Country { get; set; } = string.Empty;
+        public bool IsDefault { get; set; }
+    }
+
+    public class ChangeEmailRequestDto
+    {
+        public string NewEmail { get; set; } = string.Empty;
+        public string CurrentPassword { get; set; } = string.Empty;
+    }
+
+    public class ProfileDto
+    {
+        public int CustomerId { get; set; }
+        public Guid UserId { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string? CompanyName { get; set; }
+        public DateTime CreatedAtUtc { get; set; }
+    }
+
+    public class UpdateProfileRequestDto
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string? CompanyName { get; set; }
+    }
+
+    public class ChangePasswordRequestDto
+    {
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
     }
 }

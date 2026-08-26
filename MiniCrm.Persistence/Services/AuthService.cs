@@ -298,6 +298,171 @@ public sealed class AuthService : IAuthService
 
 
     // ============================================================
+    // CHANGE PASSWORD
+    // ============================================================
+
+    public async Task ChangePasswordAsync(
+        Guid userId,
+        ChangePasswordRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var user =
+            await _userManager.FindByIdAsync(
+                userId.ToString())
+            ?? throw new UnauthorizedAccessException(
+                "User not found.");
+
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            throw new UnauthorizedAccessException(
+                "The account is temporarily locked.");
+        }
+
+        // Mevcut şifre burada ayrıca kontrol edilir ki yanlış denemeler
+        // (LoginAsync'teki gibi) lockout sayacına dahil olsun; aksi halde
+        // Identity'nin ChangePasswordAsync'i mevcut şifreyi kendi içinde
+        // doğruluyor olsa da başarısız denemeler hiç sayılmaz ve bu
+        // endpoint sınırsız brute-force denemesine açık kalırdı.
+        var currentPasswordValid =
+            await _userManager.CheckPasswordAsync(
+                user,
+                request.CurrentPassword);
+
+        if (!currentPasswordValid)
+        {
+            await _userManager.AccessFailedAsync(
+                user);
+
+            throw new UnauthorizedAccessException(
+                "Current password is incorrect.");
+        }
+
+        var result =
+            await _userManager.ChangePasswordAsync(
+                user,
+                request.CurrentPassword,
+                request.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(
+                " | ",
+                result.Errors
+                    .Select(x => x.Description));
+
+            throw new InvalidOperationException(
+                errors);
+        }
+
+        await _userManager.ResetAccessFailedCountAsync(
+            user);
+    }
+
+
+    // ============================================================
+    // CHANGE EMAIL
+    // ============================================================
+
+    public async Task ChangeEmailAsync(
+        Guid userId,
+        ChangeEmailRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var user =
+            await _userManager.FindByIdAsync(
+                userId.ToString())
+            ?? throw new UnauthorizedAccessException(
+                "User not found.");
+
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            throw new UnauthorizedAccessException(
+                "The account is temporarily locked.");
+        }
+
+        var passwordValid =
+            await _userManager.CheckPasswordAsync(
+                user,
+                request.CurrentPassword);
+
+        if (!passwordValid)
+        {
+            // LoginAsync ile aynı şekilde başarısız denemeyi lockout
+            // sayacına dahil et (bkz. ChangePasswordAsync'teki not).
+            await _userManager.AccessFailedAsync(
+                user);
+
+            throw new UnauthorizedAccessException(
+                "Current password is incorrect.");
+        }
+
+        await _userManager.ResetAccessFailedCountAsync(
+            user);
+
+        var newEmail = request.NewEmail
+            .Trim()
+            .ToLowerInvariant();
+
+        var existingUser =
+            await _userManager.FindByEmailAsync(
+                newEmail);
+
+        if (existingUser is not null &&
+            existingUser.Id != user.Id)
+        {
+            throw new InvalidOperationException(
+                "An account with this email already exists.");
+        }
+
+        var setEmailResult =
+            await _userManager.SetEmailAsync(
+                user,
+                newEmail);
+
+        if (!setEmailResult.Succeeded)
+        {
+            var errors = string.Join(
+                " | ",
+                setEmailResult.Errors
+                    .Select(x => x.Description));
+
+            throw new InvalidOperationException(
+                errors);
+        }
+
+        var setUserNameResult =
+            await _userManager.SetUserNameAsync(
+                user,
+                newEmail);
+
+        if (!setUserNameResult.Succeeded)
+        {
+            var errors = string.Join(
+                " | ",
+                setUserNameResult.Errors
+                    .Select(x => x.Description));
+
+            throw new InvalidOperationException(
+                errors);
+        }
+
+        var customer =
+            await _customerRepository.GetByUserIdAsync(
+                userId,
+                cancellationToken);
+
+        if (customer is not null)
+        {
+            customer.Email =
+                newEmail;
+
+            await _unitOfWork.SaveChangesAsync(
+                cancellationToken);
+        }
+    }
+
+
+    // ============================================================
     // AUTH RESPONSE OLUŞTUR
     // ============================================================
 
