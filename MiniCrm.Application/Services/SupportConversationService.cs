@@ -28,6 +28,9 @@ public sealed class SupportConversationService
     private readonly IAdminDirectoryService
         _adminDirectoryService;
 
+    private readonly IRealtimeNotifier
+        _realtimeNotifier;
+
     private readonly IUnitOfWork
         _unitOfWork;
 
@@ -39,6 +42,7 @@ public sealed class SupportConversationService
         IEmailLogRepository emailLogRepository,
         IEmailService emailService,
         IAdminDirectoryService adminDirectoryService,
+        IRealtimeNotifier realtimeNotifier,
         IUnitOfWork unitOfWork)
     {
         _customerRepository =
@@ -58,6 +62,9 @@ public sealed class SupportConversationService
 
         _adminDirectoryService =
             adminDirectoryService;
+
+        _realtimeNotifier =
+            realtimeNotifier;
 
         _unitOfWork =
             unitOfWork;
@@ -365,6 +372,19 @@ public sealed class SupportConversationService
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 
+        try
+        {
+            await _realtimeNotifier.NotifyCustomerAsync(
+                conversation.Customer.UserId,
+                "SupportConversationClosed",
+                conversation.Id,
+                cancellationToken);
+        }
+        catch
+        {
+            // Best-effort; kapatma işleminin kendisi zaten tamamlandı.
+        }
+
         return MapDetail(
             conversation);
     }
@@ -450,6 +470,22 @@ public sealed class SupportConversationService
         string message,
         CancellationToken cancellationToken)
     {
+        // Gerçek zamanlı bildirim best-effort'tur: başarısız olsa bile
+        // mesaj gönderme işleminin kendisi asla etkilenmemeli (e-posta
+        // gönderiminde uygulanan aynı felsefe).
+        try
+        {
+            await _realtimeNotifier.NotifyAdminsAsync(
+                "SupportMessageReceived",
+                conversation.Id,
+                cancellationToken);
+        }
+        catch
+        {
+            // Bağlı admin olmaması ya da geçici bir SignalR hatası
+            // ana akışı bozmamalı.
+        }
+
         var adminEmails =
             await _adminDirectoryService.GetAdminEmailsAsync(
                 cancellationToken);
@@ -488,6 +524,20 @@ public sealed class SupportConversationService
         string message,
         CancellationToken cancellationToken)
     {
+        try
+        {
+            await _realtimeNotifier.NotifyCustomerAsync(
+                conversation.Customer.UserId,
+                "SupportMessageReceived",
+                conversation.Id,
+                cancellationToken);
+        }
+        catch
+        {
+            // Best-effort; müşteri o an bağlı değilse ya da geçici bir
+            // SignalR hatası oluşursa ana akış etkilenmemeli.
+        }
+
         var subject =
             $"MiniCrm Support - New Reply in Conversation #{conversation.Id}";
 

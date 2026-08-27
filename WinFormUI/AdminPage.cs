@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Windows.Forms;
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace WinFormUI
 {
@@ -39,6 +40,9 @@ namespace WinFormUI
 
 
         private bool _navigatedAway;
+        private HubConnection? _hubConnection;
+        private int? _selectedSupportConversationId;
+        private bool _isLoadingSupportConversations;
 
         public AdminPage(string email, string token)
         {
@@ -76,6 +80,11 @@ namespace WinFormUI
 
         private void AdminPage_FormClosed(object? sender, FormClosedEventArgs e)
         {
+            if (_hubConnection is not null)
+            {
+                _ = _hubConnection.DisposeAsync();
+            }
+
             if (_navigatedAway)
             {
                 return;
@@ -127,6 +136,103 @@ namespace WinFormUI
             await LoadLeadsAsync();
 
             AdminPage_Resize(this, EventArgs.Empty);
+
+            await StartRealtimeConnectionAsync();
+        }
+
+
+        // ============================================================
+        // GERÇEK ZAMANLI BİLDİRİMLER (SignalR)
+        // ============================================================
+
+        private async Task StartRealtimeConnectionAsync()
+        {
+            try
+            {
+                _hubConnection = new HubConnectionBuilder()
+                    .WithUrl(
+                        $"{ApiConfig.BaseUrl}hubs/notifications",
+                        options => options.AccessTokenProvider = () => Task.FromResult<string?>(_token))
+                    .WithAutomaticReconnect()
+                    .Build();
+
+                _hubConnection.On<int>(
+                    "SupportMessageReceived",
+                    async _ => await OnSupportUpdatedAsync());
+
+                _hubConnection.On<bool>(
+                    "OrdersUpdated",
+                    async _ => await OnOrdersUpdatedAsync());
+
+                _hubConnection.On<bool>(
+                    "ProductsUpdated",
+                    async _ => await OnProductsUpdatedAsync());
+
+                await _hubConnection.StartAsync();
+            }
+            catch
+            {
+                // Gerçek zamanlı bağlantı kurulamazsa uygulama normal
+                // (manuel yenilemeye dayalı) şekilde çalışmaya devam eder.
+            }
+        }
+
+        private Task OnSupportUpdatedAsync()
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(NotifySupportUpdated));
+                return Task.CompletedTask;
+            }
+
+            NotifySupportUpdated();
+            return Task.CompletedTask;
+        }
+
+        private async void NotifySupportUpdated()
+        {
+            await LoadSupportConversationsAsync();
+        }
+
+        // Bir müşteri sipariş verdiğinde/doğruladığında/iptal ettiğinde
+        // (ya da başka bir admin bir siparişin durumunu değiştirdiğinde)
+        // tetiklenir: sipariş listesi ve (stok değişmiş olabileceğinden)
+        // ürün listesi otomatik yenilenir.
+        private Task OnOrdersUpdatedAsync()
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(NotifyOrdersUpdated));
+                return Task.CompletedTask;
+            }
+
+            NotifyOrdersUpdated();
+            return Task.CompletedTask;
+        }
+
+        private async void NotifyOrdersUpdated()
+        {
+            await LoadOrdersAsync();
+            await LoadProductsAsync();
+        }
+
+        // Ürün/stok herhangi bir nedenle (sipariş doğrulama, sipariş iptali,
+        // admin'in manuel stok/ürün değişikliği) değiştiğinde tetiklenir.
+        private Task OnProductsUpdatedAsync()
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(NotifyProductsUpdated));
+                return Task.CompletedTask;
+            }
+
+            NotifyProductsUpdated();
+            return Task.CompletedTask;
+        }
+
+        private async void NotifyProductsUpdated()
+        {
+            await LoadProductsAsync();
         }
 
 
@@ -138,7 +244,7 @@ namespace WinFormUI
         {
             if (Siparişler.Width > 0)
             {
-                panel1.Width = Math.Max(180, (int)(Siparişler.Width * 0.28));
+                panel1.Width = Math.Max(260, (int)(Siparişler.Width * 0.38));
             }
 
             if (Destek.Width > 0)
@@ -1014,10 +1120,28 @@ namespace WinFormUI
         // SİPARİŞLERİ YÜKLE
         // ============================================================
 
+        private bool _isLoadingOrders;
+
         private async Task LoadOrdersAsync()
         {
+            // Destek sohbeti listesinde yaşanan ve uzun uğraşla çözülen
+            // "seçim kayboluyor" hatasıyla aynı sınıf sorun burada da
+            // yaşanabilirdi (özellikle artık SignalR ile arka planda da
+            // tetiklendiği için); aynı kanıtlanmış çözüm burada da baştan
+            // uygulanıyor: çakışan çağrılara karşı koruma + rebind
+            // sırasında SelectionChanged'in tamamen koparılması.
+            if (_isLoadingOrders)
+            {
+                return;
+            }
+
+            _isLoadingOrders = true;
+
             try
             {
+                var orderIdToRestore =
+                    GetSelectedOrder()?.Id;
+
                 var response = await _httpClient.GetAsync("api/AdminOrders");
 
                 if (!response.IsSuccessStatusCode)
@@ -1036,8 +1160,23 @@ namespace WinFormUI
 
                 _allOrders = orders;
 
-                SıparısGrıdVıew.DataSource = orders;
-                ConfigureOrderGridColumns();
+                SıparısGrıdVıew.SelectionChanged -= SıparısGrıdVıew_SelectionChanged;
+
+                try
+                {
+                    SıparısGrıdVıew.DataSource = orders;
+                    ConfigureOrderGridColumns();
+
+                    if (orderIdToRestore.HasValue)
+                    {
+                        SelectOrderById(orderIdToRestore.Value);
+                    }
+                }
+                finally
+                {
+                    SıparısGrıdVıew.SelectionChanged += SıparısGrıdVıew_SelectionChanged;
+                }
+
                 UpdateOrderDetailPanel(GetSelectedOrder());
             }
             catch (Exception ex)
@@ -1047,6 +1186,10 @@ namespace WinFormUI
                     "Bağlantı Hatası",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _isLoadingOrders = false;
             }
         }
 
@@ -1110,7 +1253,7 @@ namespace WinFormUI
             }
         }
 
-        private void SıparısGrıdVıew_SelectionChanged(object sender, EventArgs e)
+        private void SıparısGrıdVıew_SelectionChanged(object? sender, EventArgs e)
         {
             UpdateOrderDetailPanel(GetSelectedOrder());
         }
@@ -1119,6 +1262,11 @@ namespace WinFormUI
         {
             lblOrderNo.Text = $"Sipariş No: {order?.OrderNumber ?? "-"}";
             lblOrderCustomer.Text = $"Müşteri: {order?.CustomerName ?? "-"}";
+            lblOrderRecipient.Text = $"Alıcı: {order?.RecipientName ?? "-"}";
+            lblOrderPhone.Text = $"Telefon: {(string.IsNullOrWhiteSpace(order?.Phone) ? "-" : order.Phone)}";
+            lblOrderAddressLine.Text = $"Adres: {(order is null ? "-" : order.AddressLine)}";
+            lblOrderCityDistrict.Text = $"Şehir/İlçe: {(order is null ? "-" : $"{order.City} / {order.District}")}";
+            lblOrderPostalCountry.Text = $"Posta Kodu/Ülke: {(order is null ? "-" : $"{(string.IsNullOrWhiteSpace(order.PostalCode) ? "-" : order.PostalCode)} / {order.Country}")}";
             lblOrderAmount.Text = $"Tutar: {(order is null ? "-" : order.TotalAmount.ToString("N2"))}";
             lblOrderStatus.Text = $"Durum: {order?.Status ?? "-"}";
 
@@ -1452,8 +1600,24 @@ namespace WinFormUI
 
         private async Task LoadSupportConversationsAsync()
         {
+            // Müşteri arka arkaya birkaç mesaj gönderirse (ya da admin kendi
+            // yanıtını gönderirken tam o anda SignalR bildirimi de gelirse),
+            // bu metot üst üste/çakışarak çağrılabiliyordu — bu basit
+            // "meşgulse atla" koruması bu çakışmayı tamamen engelliyor.
+            if (_isLoadingSupportConversations)
+            {
+                return;
+            }
+
+            _isLoadingSupportConversations = true;
+
             try
             {
+                // Geri yüklenecek id, DataSource'a hiç dokunmadan ÖNCE yerel
+                // bir değişkene alınır.
+                var conversationIdToRestore =
+                    _selectedSupportConversationId;
+
                 var response = await _httpClient.GetAsync("api/AdminSupportConversations");
 
                 if (!response.IsSuccessStatusCode)
@@ -1470,9 +1634,37 @@ namespace WinFormUI
                     await response.Content.ReadFromJsonAsync<List<SupportConversationSummaryDto>>()
                     ?? new List<SupportConversationSummaryDto>();
 
-                dataGridView4.DataSource = conversations;
-                ConfigureSupportGridColumns();
-                await UpdateSupportDetailPanelAsync(GetSelectedConversation());
+                // DataSource'un yeniden bağlanması grid'i WinForms'un kendi
+                // iç mantığıyla bir veya birden çok kez geçici olarak farklı
+                // satırlara (hatta seçimsiz duruma) götürüyor; bu da her
+                // seferinde SelectionChanged'i tetikliyordu. Bir önceki
+                // düzeltmede bunu bir bayrakla "bastırmaya" çalışmak kırılgan
+                // çıktı (WinForms'un tam olarak kaç kez/ne zaman tetiklediğine
+                // bağımlıydı). Bunun yerine olay işleyicisi bu süre boyunca
+                // TAMAMEN koparılıyor — böylece rebind sırasında ne olursa
+                // olsun hiçbir ara/geçici SelectionChanged çalışamıyor;
+                // yeniden bağlanınca tek, kontrollü bir güncelleme yapılıyor.
+                dataGridView4.SelectionChanged -= dataGridView4_SelectionChanged;
+
+                try
+                {
+                    dataGridView4.DataSource = conversations;
+                    ConfigureSupportGridColumns();
+
+                    if (conversationIdToRestore.HasValue)
+                    {
+                        SelectConversationById(conversationIdToRestore.Value);
+                    }
+                }
+                finally
+                {
+                    dataGridView4.SelectionChanged += dataGridView4_SelectionChanged;
+                }
+
+                var restoredSelection = GetSelectedConversation();
+                _selectedSupportConversationId = restoredSelection?.Id;
+
+                await UpdateSupportDetailPanelAsync(restoredSelection);
             }
             catch (Exception ex)
             {
@@ -1481,6 +1673,10 @@ namespace WinFormUI
                     "Bağlantı Hatası",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _isLoadingSupportConversations = false;
             }
         }
 
@@ -1539,9 +1735,23 @@ namespace WinFormUI
             }
         }
 
-        private async void dataGridView4_SelectionChanged(object sender, EventArgs e)
+        private async void dataGridView4_SelectionChanged(object? sender, EventArgs e)
         {
-            await UpdateSupportDetailPanelAsync(GetSelectedConversation());
+            var selected = GetSelectedConversation();
+            var newConversationId = selected?.Id;
+
+            // Gerçekten BAŞKA bir sohbete geçildiyse (liste yenilenirken aynı
+            // sohbete geri dönmek bunun dışında), yazılmakta olan taslak
+            // mesaj temizlenir — aksi halde bir önceki sohbetin taslağı
+            // yanlışlıkla yeni seçilen sohbete "sızabilir".
+            if (newConversationId != _selectedSupportConversationId)
+            {
+                mesajTextBox.Text = string.Empty;
+            }
+
+            _selectedSupportConversationId = newConversationId;
+
+            await UpdateSupportDetailPanelAsync(selected);
         }
 
         private async Task UpdateSupportDetailPanelAsync(SupportConversationSummaryDto? conversation)
@@ -1604,7 +1814,16 @@ namespace WinFormUI
                 MesajlarTextBox.SelectionStart = MesajlarTextBox.Text.Length;
                 MesajlarTextBox.ScrollToCaret();
 
-                mesajTextBox.Text = string.Empty;
+                // NOT: mesajTextBox burada KASITLI OLARAK temizlenmiyor.
+                // Bu panel; hem admin kendi mesajını gönderdikten sonra hem
+                // de SignalR ile karşı taraf mesaj attığında (admin henüz
+                // yanıtını yazıp göndermemişken) çağrılıyor. Burada
+                // temizlenseydi, admin bir cevap yazarken müşteri araya
+                // mesaj attığında admin'in henüz göndermediği taslak metni
+                // siliniyordu — "sohbetten atılma" hissinin asıl kaynağı
+                // buydu. Gönderim sonrası temizleme artık doğrudan
+                // yanitbutton_Click içinde, başarılı gönderimden hemen
+                // sonra yapılıyor.
             }
             catch (Exception ex)
             {
@@ -1662,6 +1881,8 @@ namespace WinFormUI
                     return;
                 }
 
+                mesajTextBox.Text = string.Empty;
+
                 await LoadSupportConversationsAsync();
                 SelectConversationById(selected.Id);
             }
@@ -1680,7 +1901,7 @@ namespace WinFormUI
         }
 
 
-        
+
         // KONUŞMAYI KAPAT
         
 
@@ -1830,6 +2051,13 @@ namespace WinFormUI
         public DateTime? ShippedAtUtc { get; set; }
         public DateTime? DeliveredAtUtc { get; set; }
         public DateTime? CancelledAtUtc { get; set; }
+        public string RecipientName { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string AddressLine { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string District { get; set; } = string.Empty;
+        public string? PostalCode { get; set; }
+        public string Country { get; set; } = string.Empty;
     }
 
     public class CancelOrderRequestDto

@@ -14,19 +14,39 @@ public sealed class ProductService : IProductService
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly ICartRepository _cartRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IRealtimeNotifier _realtimeNotifier;
 
     public ProductService(
         IProductRepository productRepository,
         ICategoryRepository categoryRepository,
         IStockMovementRepository stockMovementRepository,
         ICartRepository cartRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IRealtimeNotifier realtimeNotifier)
     {
         _productRepository = productRepository;
         _categoryRepository = categoryRepository;
         _stockMovementRepository = stockMovementRepository;
         _cartRepository = cartRepository;
         _unitOfWork = unitOfWork;
+        _realtimeNotifier = realtimeNotifier;
+    }
+
+    // Best-effort: bildirim başarısız olsa bile asıl işlem etkilenmez
+    // (SMTP gönderiminde uygulanan aynı felsefe).
+    private async Task NotifyProductsUpdatedAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _realtimeNotifier.NotifyAllAsync(
+                "ProductsUpdated",
+                true,
+                cancellationToken);
+        }
+        catch
+        {
+        }
     }
 
     public async Task<List<ProductResponseDto>> GetActiveAsync(
@@ -117,6 +137,9 @@ public sealed class ProductService : IProductService
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 
+        await NotifyProductsUpdatedAsync(
+            cancellationToken);
+
         return Map(product, category.Name);
     }
 
@@ -193,6 +216,9 @@ public sealed class ProductService : IProductService
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 
+        await NotifyProductsUpdatedAsync(
+            cancellationToken);
+
         return Map(product, category.Name);
     }
 
@@ -236,6 +262,9 @@ public sealed class ProductService : IProductService
         product.SoftDelete();
 
         await _unitOfWork.SaveChangesAsync(
+            cancellationToken);
+
+        await NotifyProductsUpdatedAsync(
             cancellationToken);
     }
 
@@ -296,6 +325,9 @@ public sealed class ProductService : IProductService
             cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(
+            cancellationToken);
+
+        await NotifyProductsUpdatedAsync(
             cancellationToken);
 
         return Map(product);

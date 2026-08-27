@@ -46,6 +46,11 @@ namespace WinFormUI
             panel1 = new Panel();
             lblOrderNo = new Label();
             lblOrderCustomer = new Label();
+            lblOrderRecipient = new Label();
+            lblOrderPhone = new Label();
+            lblOrderAddressLine = new Label();
+            lblOrderCityDistrict = new Label();
+            lblOrderPostalCountry = new Label();
             lblOrderAmount = new Label();
             lblOrderStatus = new Label();
             btnPrepare = new Button();
@@ -291,8 +296,14 @@ namespace WinFormUI
             // 
             // panel1
             // 
+            panel1.AutoScroll = true;
             panel1.Controls.Add(lblOrderNo);
             panel1.Controls.Add(lblOrderCustomer);
+            panel1.Controls.Add(lblOrderRecipient);
+            panel1.Controls.Add(lblOrderPhone);
+            panel1.Controls.Add(lblOrderAddressLine);
+            panel1.Controls.Add(lblOrderCityDistrict);
+            panel1.Controls.Add(lblOrderPostalCountry);
             panel1.Controls.Add(lblOrderAmount);
             panel1.Controls.Add(lblOrderStatus);
             panel1.Controls.Add(btnPrepare);
@@ -302,81 +313,125 @@ namespace WinFormUI
             panel1.Dock = DockStyle.Right;
             panel1.Location = new Point(516, 3);
             panel1.Name = "panel1";
-            panel1.Size = new Size(266, 405);
+            panel1.Size = new Size(300, 405);
             panel1.TabIndex = 2;
-            // 
+            //
             // lblOrderNo
-            // 
+            //
             lblOrderNo.AutoSize = true;
             lblOrderNo.Location = new Point(15, 15);
             lblOrderNo.Name = "lblOrderNo";
             lblOrderNo.Size = new Size(90, 20);
             lblOrderNo.TabIndex = 0;
             lblOrderNo.Text = "Sipariş No: -";
-            // 
+            //
             // lblOrderCustomer
-            // 
+            //
             lblOrderCustomer.AutoSize = true;
             lblOrderCustomer.Location = new Point(15, 45);
             lblOrderCustomer.Name = "lblOrderCustomer";
             lblOrderCustomer.Size = new Size(71, 20);
             lblOrderCustomer.TabIndex = 1;
             lblOrderCustomer.Text = "Müşteri: -";
-            // 
+            //
+            // lblOrderRecipient
+            //
+            lblOrderRecipient.AutoSize = true;
+            lblOrderRecipient.Location = new Point(15, 75);
+            lblOrderRecipient.Name = "lblOrderRecipient";
+            lblOrderRecipient.Size = new Size(52, 20);
+            lblOrderRecipient.TabIndex = 2;
+            lblOrderRecipient.Text = "Alıcı: -";
+            //
+            // lblOrderPhone
+            //
+            lblOrderPhone.AutoSize = true;
+            lblOrderPhone.Location = new Point(15, 105);
+            lblOrderPhone.Name = "lblOrderPhone";
+            lblOrderPhone.Size = new Size(69, 20);
+            lblOrderPhone.TabIndex = 3;
+            lblOrderPhone.Text = "Telefon: -";
+            //
+            // lblOrderAddressLine
+            //
+            lblOrderAddressLine.Location = new Point(15, 135);
+            lblOrderAddressLine.Name = "lblOrderAddressLine";
+            lblOrderAddressLine.Size = new Size(260, 45);
+            lblOrderAddressLine.TabIndex = 4;
+            lblOrderAddressLine.Text = "Adres: -";
+            //
+            // lblOrderCityDistrict
+            //
+            lblOrderCityDistrict.AutoSize = true;
+            lblOrderCityDistrict.Location = new Point(15, 183);
+            lblOrderCityDistrict.Name = "lblOrderCityDistrict";
+            lblOrderCityDistrict.Size = new Size(110, 20);
+            lblOrderCityDistrict.TabIndex = 5;
+            lblOrderCityDistrict.Text = "Şehir/İlçe: -";
+            //
+            // lblOrderPostalCountry
+            //
+            lblOrderPostalCountry.AutoSize = true;
+            lblOrderPostalCountry.Location = new Point(15, 208);
+            lblOrderPostalCountry.Name = "lblOrderPostalCountry";
+            lblOrderPostalCountry.Size = new Size(160, 20);
+            lblOrderPostalCountry.TabIndex = 6;
+            lblOrderPostalCountry.Text = "Posta Kodu/Ülke: -";
+            //
             // lblOrderAmount
-            // 
+            //
             lblOrderAmount.AutoSize = true;
-            lblOrderAmount.Location = new Point(15, 75);
+            lblOrderAmount.Location = new Point(15, 238);
             lblOrderAmount.Name = "lblOrderAmount";
             lblOrderAmount.Size = new Size(56, 20);
-            lblOrderAmount.TabIndex = 2;
+            lblOrderAmount.TabIndex = 7;
             lblOrderAmount.Text = "Tutar: -";
-            // 
+            //
             // lblOrderStatus
-            // 
+            //
             lblOrderStatus.AutoSize = true;
-            lblOrderStatus.Location = new Point(15, 105);
+            lblOrderStatus.Location = new Point(15, 263);
             lblOrderStatus.Name = "lblOrderStatus";
             lblOrderStatus.Size = new Size(67, 20);
-            lblOrderStatus.TabIndex = 3;
+            lblOrderStatus.TabIndex = 8;
             lblOrderStatus.Text = "Durum: -";
-            // 
+            //
             // btnPrepare
-            // 
-            btnPrepare.Location = new Point(15, 150);
+            //
+            btnPrepare.Location = new Point(15, 300);
             btnPrepare.Name = "btnPrepare";
-            btnPrepare.Size = new Size(190, 30);
-            btnPrepare.TabIndex = 4;
+            btnPrepare.Size = new Size(220, 30);
+            btnPrepare.TabIndex = 9;
             btnPrepare.Text = "Hazırlanıyor";
             btnPrepare.UseVisualStyleBackColor = true;
             btnPrepare.Click += btnPrepare_Click;
-            // 
+            //
             // btnShip
-            // 
-            btnShip.Location = new Point(15, 190);
+            //
+            btnShip.Location = new Point(15, 340);
             btnShip.Name = "btnShip";
-            btnShip.Size = new Size(190, 30);
-            btnShip.TabIndex = 5;
+            btnShip.Size = new Size(220, 30);
+            btnShip.TabIndex = 10;
             btnShip.Text = "Kargoya Ver";
             btnShip.UseVisualStyleBackColor = true;
             btnShip.Click += btnShip_Click;
-            // 
+            //
             // btnDeliver
-            // 
-            btnDeliver.Location = new Point(15, 230);
+            //
+            btnDeliver.Location = new Point(15, 380);
             btnDeliver.Name = "btnDeliver";
-            btnDeliver.Size = new Size(190, 30);
-            btnDeliver.TabIndex = 6;
+            btnDeliver.Size = new Size(220, 30);
+            btnDeliver.TabIndex = 11;
             btnDeliver.Text = "Teslim Edildi";
             btnDeliver.UseVisualStyleBackColor = true;
             btnDeliver.Click += btnDeliver_Click;
-            // 
+            //
             // btnCancelOrder
             // 
-            btnCancelOrder.Location = new Point(15, 270);
+            btnCancelOrder.Location = new Point(15, 420);
             btnCancelOrder.Name = "btnCancelOrder";
-            btnCancelOrder.Size = new Size(190, 30);
-            btnCancelOrder.TabIndex = 7;
+            btnCancelOrder.Size = new Size(220, 30);
+            btnCancelOrder.TabIndex = 12;
             btnCancelOrder.Text = "İptal Et";
             btnCancelOrder.UseVisualStyleBackColor = true;
             btnCancelOrder.Click += btnCancelOrder_Click;
@@ -884,6 +939,11 @@ namespace WinFormUI
         private Panel panel1;
         private Label lblOrderNo;
         private Label lblOrderCustomer;
+        private Label lblOrderRecipient;
+        private Label lblOrderPhone;
+        private Label lblOrderAddressLine;
+        private Label lblOrderCityDistrict;
+        private Label lblOrderPostalCountry;
         private Label lblOrderAmount;
         private Label lblOrderStatus;
         private Button btnPrepare;

@@ -9,8 +9,10 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using MiniCrm.Api.BackgroundServices;
 using MiniCrm.Api.ErrorHandling;
+using MiniCrm.Api.Hubs;
 using MiniCrm.Api.Middleware;
 using MiniCrm.Api.OpenApi;
+using MiniCrm.Api.Realtime;
 using MiniCrm.Application.Interfaces.Services;
 using MiniCrm.Infrastructure.Authentication;
 using MiniCrm.Infrastructure.Email;
@@ -239,10 +241,48 @@ builder.Services
                     RoleClaimType =
                         ClaimTypes.Role
                 };
+
+
+            // SignalR WebSocket/SSE bağlantılarında Authorization header
+            // her zaman kullanılamadığından, client JWT'yi query string
+            // üzerinden (access_token) gönderir; bu standart yaklaşım
+            // yalnızca hub path'i için token'ı buradan okur.
+            options.Events =
+                new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken =
+                            context.Request.Query["access_token"];
+
+                        var path =
+                            context.HttpContext.Request.Path;
+
+                        if (!string.IsNullOrEmpty(accessToken) &&
+                            path.StartsWithSegments("/hubs"))
+                        {
+                            context.Token =
+                                accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
         });
 
 
 builder.Services.AddAuthorization();
+
+
+// ================================================================
+// SIGNALR
+// ================================================================
+
+builder.Services.AddSignalR();
+
+builder.Services.AddScoped<
+    IRealtimeNotifier,
+    SignalRNotifier>();
 
 
 // ================================================================
@@ -687,6 +727,14 @@ app.MapHealthChecks(
 // ================================================================
 
 app.MapControllers();
+
+
+// ================================================================
+// SIGNALR HUB
+// ================================================================
+
+app.MapHub<NotificationHub>(
+    "/hubs/notifications");
 
 
 // ================================================================

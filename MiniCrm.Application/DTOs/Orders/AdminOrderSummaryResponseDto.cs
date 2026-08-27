@@ -22,6 +22,30 @@ public class AdminOrderSummaryResponseDto
 
     public DateTime CreatedAtUtc { get; set; }
 
+
+    // ============================================================
+    // SHIPPING ADDRESS
+    // ============================================================
+
+    public string RecipientName { get; set; } =
+        string.Empty;
+
+    public string? Phone { get; set; }
+
+    public string AddressLine { get; set; } =
+        string.Empty;
+
+    public string City { get; set; } =
+        string.Empty;
+
+    public string District { get; set; } =
+        string.Empty;
+
+    public string? PostalCode { get; set; }
+
+    public string Country { get; set; } =
+        string.Empty;
+
     public DateTime? ConfirmedAtUtc { get; set; }
 
     public DateTime? ShippedAtUtc { get; set; }

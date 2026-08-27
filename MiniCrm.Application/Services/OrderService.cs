@@ -38,6 +38,9 @@ public sealed class OrderService
 	private readonly IOrderNumberGenerator
 		_orderNumberGenerator;
 
+	private readonly IRealtimeNotifier
+		_realtimeNotifier;
+
 
 	public OrderService(
 		ICustomerRepository customerRepository,
@@ -48,7 +51,8 @@ public sealed class OrderService
 		IUnitOfWork unitOfWork,
 		IEmailService emailService,
 		IVerificationCodeService verificationCodeService,
-		IOrderNumberGenerator orderNumberGenerator)
+		IOrderNumberGenerator orderNumberGenerator,
+		IRealtimeNotifier realtimeNotifier)
 	{
 		_customerRepository =
 			customerRepository;
@@ -76,6 +80,63 @@ public sealed class OrderService
 
 		_orderNumberGenerator =
 			orderNumberGenerator;
+
+		_realtimeNotifier =
+			realtimeNotifier;
+	}
+
+
+	// ============================================================
+	// GERÇEK ZAMANLI BİLDİRİMLER (best-effort — hiçbiri asıl işlemi
+	// başarısız kılmaz; SMTP gönderiminde uygulanan aynı felsefe)
+	// ============================================================
+
+	private async Task NotifyAdminsOrdersUpdatedAsync(
+		CancellationToken cancellationToken)
+	{
+		try
+		{
+			await _realtimeNotifier.NotifyAdminsAsync(
+				"OrdersUpdated",
+				true,
+				cancellationToken);
+		}
+		catch
+		{
+		}
+	}
+
+	private async Task NotifyCustomerOrderStatusChangedAsync(
+		Guid customerUserId,
+		int orderId,
+		CancellationToken cancellationToken)
+	{
+		try
+		{
+			await _realtimeNotifier.NotifyCustomerAsync(
+				customerUserId,
+				"OrderStatusChanged",
+				orderId,
+				cancellationToken);
+		}
+		catch
+		{
+		}
+	}
+
+	private async Task NotifyProductsUpdatedAsync(
+		CancellationToken cancellationToken)
+	{
+		try
+		{
+			await _realtimeNotifier.NotifyAllAsync(
+				"ProductsUpdated",
+				true,
+				cancellationToken);
+		}
+		catch
+		{
+		}
 	}
 
 
@@ -211,6 +272,9 @@ public sealed class OrderService
 				actualEmailBody,
 				logBody,
 				cancellationToken);
+
+		await NotifyAdminsOrdersUpdatedAsync(
+			cancellationToken);
 
 		return new CheckoutOrderResponseDto
 		{
@@ -357,6 +421,12 @@ public sealed class OrderService
 			subject,
 			emailBody,
 			emailBody,
+			cancellationToken);
+
+		await NotifyAdminsOrdersUpdatedAsync(
+			cancellationToken);
+
+		await NotifyProductsUpdatedAsync(
 			cancellationToken);
 
 		return Map(order);
@@ -562,6 +632,15 @@ public sealed class OrderService
 			emailMessage,
 			cancellationToken);
 
+		await NotifyAdminsOrdersUpdatedAsync(
+			cancellationToken);
+
+		if (requiresRestock)
+		{
+			await NotifyProductsUpdatedAsync(
+				cancellationToken);
+		}
+
 		return Map(order);
 	}
 
@@ -642,7 +721,28 @@ public sealed class OrderService
 						order.DeliveredAtUtc,
 
 					CancelledAtUtc =
-						order.CancelledAtUtc
+						order.CancelledAtUtc,
+
+					RecipientName =
+						order.ShippingAddress.RecipientName,
+
+					Phone =
+						order.ShippingAddress.Phone,
+
+					AddressLine =
+						order.ShippingAddress.AddressLine,
+
+					City =
+						order.ShippingAddress.City,
+
+					District =
+						order.ShippingAddress.District,
+
+					PostalCode =
+						order.ShippingAddress.PostalCode,
+
+					Country =
+						order.ShippingAddress.Country
 				})
 			.ToList();
 	}
@@ -703,6 +803,14 @@ public sealed class OrderService
 			"Your order is now being prepared.",
 			cancellationToken);
 
+		await NotifyAdminsOrdersUpdatedAsync(
+			cancellationToken);
+
+		await NotifyCustomerOrderStatusChangedAsync(
+			order.Customer.UserId,
+			order.Id,
+			cancellationToken);
+
 		return Map(order);
 	}
 
@@ -732,6 +840,14 @@ public sealed class OrderService
 			"Your order has been shipped.",
 			cancellationToken);
 
+		await NotifyAdminsOrdersUpdatedAsync(
+			cancellationToken);
+
+		await NotifyCustomerOrderStatusChangedAsync(
+			order.Customer.UserId,
+			order.Id,
+			cancellationToken);
+
 		return Map(order);
 	}
 
@@ -759,6 +875,14 @@ public sealed class OrderService
 			order,
 			"Delivered",
 			"Your order has been delivered.",
+			cancellationToken);
+
+		await NotifyAdminsOrdersUpdatedAsync(
+			cancellationToken);
+
+		await NotifyCustomerOrderStatusChangedAsync(
+			order.Customer.UserId,
+			order.Id,
 			cancellationToken);
 
 		return Map(order);
@@ -835,6 +959,20 @@ public sealed class OrderService
 			"Cancelled",
 			emailMessage,
 			cancellationToken);
+
+		await NotifyAdminsOrdersUpdatedAsync(
+			cancellationToken);
+
+		await NotifyCustomerOrderStatusChangedAsync(
+			order.Customer.UserId,
+			order.Id,
+			cancellationToken);
+
+		if (requiresRestock)
+		{
+			await NotifyProductsUpdatedAsync(
+				cancellationToken);
+		}
 
 		return Map(order);
 	}

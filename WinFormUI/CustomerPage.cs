@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Windows.Forms;
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace WinFormUI
 {
@@ -18,6 +19,9 @@ namespace WinFormUI
         private int? _selectedOrderId;
         private string? _selectedOrderNumber;
         private int? _selectedSupportConversationId;
+        private HubConnection? _hubConnection;
+
+        private const string ReplyPlaceholder = "Yanıt yazınız...";
 
         public CustomerPage(string email, string token)
         {
@@ -31,6 +35,8 @@ namespace WinFormUI
 
             FormClosed += CustomerPage_FormClosed;
 
+            AttachReplyPlaceholder();
+
             CenterTitleLabel();
         }
 
@@ -43,6 +49,11 @@ namespace WinFormUI
 
         private void CustomerPage_FormClosed(object? sender, FormClosedEventArgs e)
         {
+            if (_hubConnection is not null)
+            {
+                _ = _hubConnection.DisposeAsync();
+            }
+
             if (_navigatedAway)
             {
                 return;
@@ -110,6 +121,28 @@ namespace WinFormUI
             label1.Left = (ClientSize.Width - label1.Width) / 2;
         }
 
+        // Yanıt kutusuna tıklanınca placeholder metni silinsin, kutu boş
+        // bırakılıp odaktan çıkılırsa placeholder geri gelsin (KayıtOlmaForm'daki
+        // AttachPlaceholder ile aynı mantık).
+        private void AttachReplyPlaceholder()
+        {
+            YanıtGondermeTextBox.GotFocus += (_, _) =>
+            {
+                if (YanıtGondermeTextBox.Text == ReplyPlaceholder)
+                {
+                    YanıtGondermeTextBox.Text = string.Empty;
+                }
+            };
+
+            YanıtGondermeTextBox.LostFocus += (_, _) =>
+            {
+                if (string.IsNullOrWhiteSpace(YanıtGondermeTextBox.Text))
+                {
+                    YanıtGondermeTextBox.Text = ReplyPlaceholder;
+                }
+            };
+        }
+
         // HESAP BİLGİLERİ / ÇIKIŞ YAP
 
         private void button2_Click(object sender, EventArgs e)
@@ -136,6 +169,104 @@ namespace WinFormUI
             await LoadCartAsync();
             await LoadOrdersAsync();
             await LoadSupportConversationsAsync();
+
+            await StartRealtimeConnectionAsync();
+        }
+
+
+        // ============================================================
+        // GERÇEK ZAMANLI BİLDİRİMLER (SignalR)
+        // ============================================================
+
+        private async Task StartRealtimeConnectionAsync()
+        {
+            try
+            {
+                _hubConnection = new HubConnectionBuilder()
+                    .WithUrl(
+                        $"{ApiConfig.BaseUrl}hubs/notifications",
+                        options => options.AccessTokenProvider = () => Task.FromResult<string?>(_token))
+                    .WithAutomaticReconnect()
+                    .Build();
+
+                _hubConnection.On<int>(
+                    "SupportMessageReceived",
+                    async _ => await OnSupportUpdatedAsync());
+
+                _hubConnection.On<int>(
+                    "SupportConversationClosed",
+                    async _ => await OnSupportUpdatedAsync());
+
+                _hubConnection.On<int>(
+                    "OrderStatusChanged",
+                    async _ => await OnOrderStatusChangedAsync());
+
+                _hubConnection.On<bool>(
+                    "ProductsUpdated",
+                    async _ => await OnProductsUpdatedAsync());
+
+                await _hubConnection.StartAsync();
+            }
+            catch
+            {
+                // Gerçek zamanlı bağlantı kurulamazsa uygulama normal
+                // (manuel yenilemeye dayalı) şekilde çalışmaya devam eder.
+            }
+        }
+
+        private Task OnSupportUpdatedAsync()
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(NotifySupportUpdated));
+                return Task.CompletedTask;
+            }
+
+            NotifySupportUpdated();
+            return Task.CompletedTask;
+        }
+
+        private async void NotifySupportUpdated()
+        {
+            await LoadSupportConversationsAsync();
+        }
+
+        // Admin bu müşterinin bir siparişinin durumunu değiştirdiğinde
+        // (hazırlanıyor/kargoya verildi/teslim edildi/iptal) tetiklenir.
+        private Task OnOrderStatusChangedAsync()
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(NotifyOrderStatusChanged));
+                return Task.CompletedTask;
+            }
+
+            NotifyOrderStatusChanged();
+            return Task.CompletedTask;
+        }
+
+        private async void NotifyOrderStatusChanged()
+        {
+            await LoadOrdersAsync(_selectedOrderId);
+        }
+
+        // Ürün/stok herhangi bir nedenle değiştiğinde (başka bir müşterinin
+        // siparişi stoğu düşürdü, admin ürün/stok güncelledi vb.) tetiklenir.
+        private Task OnProductsUpdatedAsync()
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(NotifyProductsUpdated));
+                return Task.CompletedTask;
+            }
+
+            NotifyProductsUpdated();
+            return Task.CompletedTask;
+        }
+
+        private async void NotifyProductsUpdated()
+        {
+            await LoadProductsAsync();
         }
 
 
@@ -661,12 +792,37 @@ namespace WinFormUI
 
                 lblSiparisYok.Visible = false;
                 dataGridView3.Visible = true;
-                dataGridView3.DataSource = orders;
-                ConfigureOrdersGridColumns();
 
-                if (selectOrderId.HasValue)
+                // DataSource yeniden bağlanırken oluşan geçici/ara seçim
+                // değişikliklerinin (destek sohbetinde uzun uğraşla
+                // çözülen sınıfla aynı sorun) burada da gereksiz bir detay
+                // isteği atmasını/kısa süreliğine yanlış siparişi
+                // göstermesini önlemek için olay işleyicisi rebind
+                // boyunca geçici olarak koparılıyor.
+                dataGridView3.SelectionChanged -= dataGridView3_SelectionChanged;
+
+                try
                 {
-                    SelectOrderById(selectOrderId.Value);
+                    dataGridView3.DataSource = orders;
+                    ConfigureOrdersGridColumns();
+
+                    if (selectOrderId.HasValue)
+                    {
+                        SelectOrderById(selectOrderId.Value);
+                    }
+                }
+                finally
+                {
+                    dataGridView3.SelectionChanged += dataGridView3_SelectionChanged;
+                }
+
+                if (dataGridView3.CurrentRow?.DataBoundItem is OrderSummaryResponseDto currentlySelected)
+                {
+                    await UpdateOrderDetailPanelAsync(currentlySelected.Id);
+                }
+                else
+                {
+                    ClearOrderDetailPanel();
                 }
             }
             catch (Exception ex)
@@ -795,7 +951,7 @@ namespace WinFormUI
         // SİPARİŞ DETAYI
         // ============================================================
 
-        private async void dataGridView3_SelectionChanged(object sender, EventArgs e)
+        private async void dataGridView3_SelectionChanged(object? sender, EventArgs e)
         {
             if (dataGridView3.CurrentRow?.DataBoundItem is not OrderSummaryResponseDto selected)
             {
@@ -1021,6 +1177,15 @@ namespace WinFormUI
 
         private void ConfigureSupportGridColumns()
         {
+            // Diğer tüm grid'lerde (dataGridView1-4, dgvAddresses vb.) olduğu
+            // gibi bu grid de salt okunur olmalı; aksi halde kullanıcı ID gibi
+            // hücrelere elle metin girip veri bağlama (data binding) hatası
+            // alabiliyordu (ID int alanına metin yazınca format hatası).
+            CustomerDestekDataGridView.ReadOnly = true;
+            CustomerDestekDataGridView.AllowUserToAddRows = false;
+            CustomerDestekDataGridView.MultiSelect = false;
+            CustomerDestekDataGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+
             // SupportConversationSummaryDto sınıfı AdminPage.cs ile paylaşılıyor
             // ve orada admin'e özel CustomerId/CustomerName/CustomerEmail
             // alanları da var; müşteri tarafındaki API yanıtında bu alanlar
@@ -1302,7 +1467,7 @@ namespace WinFormUI
             var messageText = YanıtGondermeTextBox.Text.Trim();
 
             if (string.IsNullOrWhiteSpace(messageText) ||
-                messageText == "Yanıt yazınız...")
+                messageText == ReplyPlaceholder)
             {
                 MessageBox.Show(
                     "Lütfen bir mesaj yazın.",
